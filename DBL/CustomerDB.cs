@@ -13,12 +13,12 @@ namespace DBL
     {
         protected override string GetTableName()
         {
-            return "Customers";
+            return "users";
         }
 
         protected override string GetPrimaryKeyName()
         {
-            return "CustomerID";
+            return "UserID";
         }
 
         protected override async Task<Customer> CreateModelAsync(object[] row)
@@ -29,9 +29,9 @@ namespace DBL
             c.FirstName = row[2].ToString();
             c.LastName = row[3].ToString();
             c.Email = row[4].ToString();
-            c.Phone = int.Parse(row[5].ToString());
-            c.Email = row[4].ToString();
-            c.IsAdmin = int.Parse(row[1].ToString());
+            c.Phone = row[5].ToString();
+            c.Password = row[6].ToString();
+
             return c;
         }
 
@@ -40,15 +40,16 @@ namespace DBL
             return ((List<Customer>)await SelectAllAsync());
         }
 
-        public async Task<Customer> InsertGetObjAsync(Customer customer, string password)
+        public async Task<Customer> InsertGetObjAsync(Customer customer)
         {
             Dictionary<string, object> fillValues = new Dictionary<string, object>()
             {
-                { " First Name", customer.FirstName },
-                { "Last Name",customer.LastName },      
-                { "Email", customer.Email },
-                { "CustomerPassword", password }
-            };
+                 { "FirstName", customer.FirstName },
+                 { "LastName", customer.LastName },
+                 { "Email", customer.Email },
+                 { "Phone", customer.Phone },
+                 { "Password", customer.Password }
+            };   
             return (Customer)await base.InsertGetObjAsync(fillValues);
         }
 
@@ -59,6 +60,9 @@ namespace DBL
             fillValues.Add(" First Name", customer.FirstName);
             fillValues.Add("Last Name", customer.LastName);
             fillValues.Add("Email", customer.Email);
+            fillValues.Add("Phone", customer.Phone);
+            fillValues.Add("Password", customer.Password);
+            filterValues.Add("Customer ID", customer.UserID.ToString());
             return await base.UpdateAsync(fillValues, filterValues);
         }
 
@@ -66,7 +70,7 @@ namespace DBL
         {
             Dictionary<string, object> filterValues = new Dictionary<string, object>
             {
-                { "CustomerID", customer.Id.ToString() }
+                { "CustomerID", customer.UserID.ToString() }
             };
             return await base.DeleteAsync(filterValues);
         }
@@ -96,18 +100,18 @@ namespace DBL
                 return null;
         }
 
-        public async Task<List<(string, string)>> GetNameAndEmail4NonAdminsAsync()
-        {
-            List<(string, string)> returnList = new List<(string, string)>();
-            string sql = "select * from Customers";
-            Dictionary<string, object> p = new Dictionary<string, object>();
-            p.Add("IsAdmin", "0");
-            List<Customer> list = (List<Customer>)await SelectAllAsync(sql, p);
-            foreach (Customer item in list)
-            {
-                returnList.Add((item.Name, item.Email));
-            }
-            return returnList;
-        }
+        //public async Task<List<(string, string)>> GetNameAndEmail4NonAdminsAsync()
+        //{
+        //    List<(string, string)> returnList = new List<(string, string)>();
+        //    string sql = "select * from Customers";
+        //    Dictionary<string, object> p = new Dictionary<string, object>();
+        //    p.Add("IsAdmin", "0");
+        //    List<Customer> list = (List<Customer>)await SelectAllAsync(sql, p);
+        //    foreach (Customer item in list)
+        //    {
+        //        returnList.Add((item.Name, item.Email));
+        //    }
+        //    return returnList;
+        //}
     }
 }

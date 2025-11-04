@@ -1,10 +1,29 @@
-﻿namespace ConsoleUnitTesting
+﻿using DBL;
+using Models;
+
+namespace ConsoleUnitTesting
 {
     internal class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
-            Console.WriteLine("Hello, World!");
+            CustomerDB db = new CustomerDB();
+
+            Customer customer = new Customer
+            {                
+                FirstName = "ssss",
+                LastName = "gal",
+                Email = "gal@gmail.com",
+                Phone = "0523581648",
+                Password = "1234"
+            };
+
+            customer = await db.InsertGetObjAsync(customer);
+            if (customer == null)
+            {
+                Console.WriteLine("failed");
+                return;
+            }
         }
     }
 }
