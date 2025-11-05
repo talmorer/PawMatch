@@ -7,22 +7,41 @@ namespace ConsoleUnitTesting
     {
         static async Task Main(string[] args)
         {
+            //Insert
+            //CustomerDB db = new CustomerDB();
+
+            //Customer customer = new Customer
+            //{                
+            //    FirstName = "galgalz",
+            //    LastName = "gal",
+            //    Email = "gal@gmail.com",
+            //    Phone = "0523581648",
+            //    Password = "1234"
+            //};
+
+            //customer = await db.InsertGetObjAsync(customer);
+            //if (customer == null)
+            //{
+            //    Console.WriteLine("failed");
+            //    return;
+            //}
             CustomerDB db = new CustomerDB();
 
-            Customer customer = new Customer
-            {                
-                FirstName = "ssss",
-                LastName = "gal",
-                Email = "gal@gmail.com",
-                Phone = "0523581648",
-                Password = "1234"
-            };
+            Console.Write("Enter email: ");
+            string email = Console.ReadLine();
 
-            customer = await db.InsertGetObjAsync(customer);
-            if (customer == null)
+            Console.Write("Enter password: ");
+            string password = Console.ReadLine();
+
+            Customer customer = await db.SelectByEmailAndPasswordAsync(email, password);
+
+            if (customer != null)
             {
-                Console.WriteLine("failed");
-                return;
+                await Console.Out.WriteLineAsync($"✅ Login success! Welcome {customer.FirstName} {customer.LastName}");
+            }
+            else
+            {
+                await Console.Out.WriteLineAsync("❌ Login failed. Wrong email or password.");
             }
         }
     }

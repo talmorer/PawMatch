@@ -1,7 +1,6 @@
 h1:focus {
     outline: none;
 }
-
 .valid.modified:not([type=checkbox]) {
     outline: 1px solid #26b050;
 }
@@ -27,3 +26,64 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+/* === ????? ??? ??????? ?????? === */
+.login-container, .Register-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #f8faf9;
+}
+
+.card {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    width: 320px;
+    text-align: center;
+}
+
+.logo {
+    color: #2e5f3e;
+    margin-bottom: 20px;
+}
+
+.input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+.btn {
+    width: 100%;
+    background-color: #2e5f3e;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+    .btn:hover {
+        background-color: #3b724a;
+    }
+
+.switch-text {
+    margin-top: 15px;
+}
+
+    .switch-text a {
+        color: #2e5f3e;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+.error {
+    color: red;
+    margin-top: 10px;
+}
+

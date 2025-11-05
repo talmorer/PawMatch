@@ -25,7 +25,7 @@ namespace DBL
         {
             Customer c = new Customer();
             c.UserID = int.Parse(row[0].ToString());
-            c.IsAdmin = int.Parse(row[1].ToString());
+            c.IsAdmin = bool.Parse(row[1].ToString());
             c.FirstName = row[2].ToString();
             c.LastName = row[3].ToString();
             c.Email = row[4].ToString();
@@ -99,6 +99,21 @@ namespace DBL
             else
                 return null;
         }
+        public async Task<Customer> SelectByEmailAndPasswordAsync(string email, string password)
+        {
+            string sql = "SELECT * FROM users WHERE Email=@Email AND Password=@Password";
+            var p = new Dictionary<string, object>
+    {
+        { "Email", email },
+        { "Password", password }
+    };
+
+            var list = (List<Customer>)await SelectAllAsync(sql, p);
+            if (list.Count == 1)
+                return list[0];
+            return null;
+        }
+
 
         //public async Task<List<(string, string)>> GetNameAndEmail4NonAdminsAsync()
         //{

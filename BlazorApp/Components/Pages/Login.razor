@@ -1,0 +1,113 @@
+﻿@page "/login"
+@using DBL
+@using Models
+@inject NavigationManager nav
+
+<div class="login-page">
+    <div class="card">
+        <h2 class="logo">🐾 PawMatch</h2>
+        <h3>Login to your account</h3>
+
+        <EditForm Model="@user" OnValidSubmit="LoginAsync">
+            <InputText @bind-Value="user.Email" placeholder="Email" class="input" />
+            <InputText @bind-Value="user.Password" placeholder="Password" type="password" class="input" />
+            <button class="btn" type="submit">Login</button>
+        </EditForm>
+
+        <p class="switch-text">
+            Don't have an account? <a href="/register">Register</a>
+        </p>
+
+        <p class="error">@error</p>
+    </div>
+</div>
+
+@code {
+    Customer user = new Customer();
+    string error = "";
+
+    async Task LoginAsync()
+    {
+        try
+        {
+            CustomerDB db = new CustomerDB();
+            Customer found = await db.SelectByEmailAndPasswordAsync(user.Email, user.Password);
+
+            if (found != null)
+            {
+                await Console.Out.WriteLineAsync($"✅ Login success! Welcome {found.FirstName}");
+                nav.NavigateTo("/");
+            }
+            else
+            {
+                error = "❌ Email or password incorrect.";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = "שגיאה: " + ex.Message;
+        }
+    }
+}
+
+<style>
+    .login-page {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: #f8faf9;
+    }
+
+    .card {
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        width: 320px;
+        text-align: center;
+    }
+
+    .logo {
+        color: #2e5f3e;
+        margin-bottom: 20px;
+    }
+
+    .input {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+    }
+
+    .btn {
+        width: 100%;
+        background-color: #2e5f3e;
+        color: white;
+        padding: 10px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+
+        .btn:hover {
+            background-color: #3b724a;
+        }
+
+    .switch-text {
+        margin-top: 15px;
+    }
+
+        .switch-text a {
+            color: #2e5f3e;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+    .error {
+        color: red;
+        margin-top: 10px;
+    }
+</style>
