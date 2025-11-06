@@ -1,16 +1,18 @@
 ﻿@page "/login"
 @using DBL
 @using Models
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedSessionStorage MySession
 @inject NavigationManager nav
 
-<div class="login-page">
+<div class="login-container">
     <div class="card">
         <h2 class="logo">🐾 PawMatch</h2>
-        <h3>Login to your account</h3>
+        <h3>Login</h3>
 
-        <EditForm Model="@user" OnValidSubmit="LoginAsync">
-            <InputText @bind-Value="user.Email" placeholder="Email" class="input" />
-            <InputText @bind-Value="user.Password" placeholder="Password" type="password" class="input" />
+        <EditForm Model="@loginData" OnValidSubmit="CheckLogin">
+            <InputText @bind-Value="loginData.Email" placeholder="Email" class="input" />
+            <InputText @bind-Value="loginData.Password" placeholder="Password" type="password" class="input" />
             <button class="btn" type="submit">Login</button>
         </EditForm>
 
@@ -18,40 +20,40 @@
             Don't have an account? <a href="/register">Register</a>
         </p>
 
-        <p class="error">@error</p>
+        <p class="error">@message</p>
     </div>
 </div>
 
 @code {
-    Customer user = new Customer();
-    string error = "";
+    LoginData loginData = new LoginData();
+    string message = "";
 
-    async Task LoginAsync()
+    async Task CheckLogin()
     {
-        try
-        {
-            CustomerDB db = new CustomerDB();
-            Customer found = await db.SelectByEmailAndPasswordAsync(user.Email, user.Password);
+        CustomerDB db = new CustomerDB();
+        Customer found = await db.SelectByEmailAndPasswordAsync(loginData.Email, loginData.Password);
 
-            if (found != null)
-            {
-                await Console.Out.WriteLineAsync($"✅ Login success! Welcome {found.FirstName}");
-                nav.NavigateTo("/");
-            }
-            else
-            {
-                error = "❌ Email or password incorrect.";
-            }
-        }
-        catch (Exception ex)
+        if (found != null)
         {
-            error = "שגיאה: " + ex.Message;
+            // שומר את כל האובייקט של המשתמש ב-SessionStorage
+            await MySession.SetAsync("customer", found);
+            nav.NavigateTo("/myaccount");
         }
+        else
+        {
+            message = "❌ Email or password incorrect.";
+        }
+    }
+
+    public class LoginData
+    {
+        public string Email { get; set; }
+        public string Password { get; set; }
     }
 }
 
 <style>
-    .login-page {
+    .login-container {
         display: flex;
         justify-content: center;
         align-items: center;

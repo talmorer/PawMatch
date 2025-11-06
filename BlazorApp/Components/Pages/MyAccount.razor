@@ -1,0 +1,238 @@
+﻿@page "/myaccount"
+@using DBL
+@using Models
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedSessionStorage MySession
+@inject NavigationManager nav
+
+<div class="account-container">
+    <div class="card">
+        <h2 class="logo">🐾 PawMatch</h2>
+
+        @if (user != null)
+        {
+            <h3>Welcome back, @user.FirstName 👋</h3>
+        }
+
+        <h4>My Account</h4>
+
+        @if (user == null)
+        {
+            <p>Loading your details...</p>
+        }
+        else
+        {
+            @if (!isEditing)
+            {
+                <div class="info">
+                    <p><strong>First Name:</strong> @user.FirstName</p>
+                    <p><strong>Last Name:</strong> @user.LastName</p>
+                    <p><strong>Email:</strong> @user.Email</p>
+                    <p><strong>Phone:</strong> @user.Phone</p>
+                </div>
+
+                <div class="btns">
+                    <button class="btn" @onclick="StartEditing">Edit Details</button>
+                    <button class="btn gray" @onclick="Logout">Logout</button>
+                </div>
+            }
+            else
+            {
+                @if (!string.IsNullOrEmpty(message) && messageClass == "success-box")
+                {
+                    <div class="@messageClass">
+                        @message
+                        <br />
+                        <button class="btn small" @onclick="() => isEditing = false">Back to My Profile</button>
+                    </div>
+                }
+                else
+                {
+                    <EditForm Model="@user" OnValidSubmit="UpdateUser">
+                        <InputText @bind-Value="user.FirstName" class="input" placeholder="First name" />
+                        <InputText @bind-Value="user.LastName" class="input" placeholder="Last name" />
+                        <InputText @bind-Value="user.Phone" class="input" placeholder="Phone" />
+                        <InputText @bind-Value="user.Password" class="input" placeholder="Password" type="password" />
+
+                        <div class="btns">
+                            <button class="btn" type="submit">Save Changes</button>
+                            <button class="btn light" type="button" @onclick="() => isEditing = false">Cancel</button>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(message) && messageClass == "error-box")
+                        {
+                            <div class="@messageClass">@message</div>
+                        }
+                    </EditForm>
+                }
+            }
+        }
+    </div>
+</div>
+
+@code {
+    Customer user;
+    bool isEditing = false;
+    string message = "";
+    string messageClass = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var result = await MySession.GetAsync<Customer>("customer");
+            if (result.Success && result.Value != null)
+            {
+                user = result.Value;
+                StateHasChanged();
+            }
+            else
+            {
+                nav.NavigateTo("/login");
+            }
+        }
+    }
+
+    void StartEditing()
+    {
+        message = "";
+        messageClass = "";
+        isEditing = true;
+    }
+
+    async Task UpdateUser()
+    {
+        CustomerDB db = new CustomerDB();
+        int result = await db.UpdateAsync(user);
+
+        if (result > 0)
+        {
+            message = "✅ Details updated successfully!";
+            messageClass = "success-box";
+            await MySession.SetAsync("customer", user);
+        }
+        else
+        {
+            message = "❌ Update failed — no changes were saved.";
+            messageClass = "error-box";
+            var original = await MySession.GetAsync<Customer>("customer");
+            if (original.Success && original.Value != null)
+                user = original.Value;
+            StateHasChanged();
+        }
+    }
+
+    async Task Logout()
+    {
+        await MySession.DeleteAsync("customer");
+        nav.NavigateTo("/login");
+    }
+}
+
+<style>
+    .account-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: #f8faf9;
+    }
+
+    .card {
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        width: 340px;
+        text-align: left;
+        position: relative;
+    }
+
+    .logo {
+        text-align: center;
+        color: #2e5f3e;
+        margin-bottom: 10px;
+    }
+
+    h3 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    h4 {
+        text-align: center;
+        color: #2e5f3e;
+        margin-bottom: 20px;
+    }
+
+    .info p {
+        margin: 8px 0;
+    }
+
+    .input {
+        width: 100%;
+        padding: 10px;
+        margin: 6px 0;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+    }
+
+    .btns {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .btn {
+        width: 100%;
+        background-color: #2e5f3e;
+        color: white;
+        padding: 10px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+
+        .btn:hover {
+            background-color: #3b724a;
+        }
+
+        .btn.gray {
+            background-color: #888;
+        }
+
+        .btn.light {
+            background-color: #e5e5e5;
+            color: #333;
+        }
+
+        .btn.small {
+            padding: 6px 8px;
+            width: auto;
+            margin-top: 10px;
+        }
+
+    .success-box {
+        background-color: #dfffe0;
+        color: #2e5f3e;
+        border: 1px solid #2e5f3e;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+        text-align: center;
+        font-weight: bold;
+    }
+
+    .error-box {
+        background-color: #ffe3e3;
+        color: #a30000;
+        border: 1px solid #a30000;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+        text-align: center;
+        font-weight: bold;
+    }
+</style>

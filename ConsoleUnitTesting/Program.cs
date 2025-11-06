@@ -7,7 +7,7 @@ namespace ConsoleUnitTesting
     {
         static async Task Main(string[] args)
         {
-            //Insert
+            //Register
             //CustomerDB db = new CustomerDB();
 
             //Customer customer = new Customer
@@ -25,24 +25,25 @@ namespace ConsoleUnitTesting
             //    Console.WriteLine("failed");
             //    return;
             //}
-            CustomerDB db = new CustomerDB();
+            //Login
+            //CustomerDB db = new CustomerDB();
 
-            Console.Write("Enter email: ");
-            string email = Console.ReadLine();
+            //Console.Write("Enter email: ");
+            //string email = Console.ReadLine();
 
-            Console.Write("Enter password: ");
-            string password = Console.ReadLine();
+            //Console.Write("Enter password: ");
+            //string password = Console.ReadLine();
 
-            Customer customer = await db.SelectByEmailAndPasswordAsync(email, password);
+            //Customer customer = await db.SelectByEmailAndPasswordAsync(email, password);
 
-            if (customer != null)
-            {
-                await Console.Out.WriteLineAsync($"✅ Login success! Welcome {customer.FirstName} {customer.LastName}");
-            }
-            else
-            {
-                await Console.Out.WriteLineAsync("❌ Login failed. Wrong email or password.");
-            }
+            //if (customer != null)
+            //{
+            //    await Console.Out.WriteLineAsync($"✅ Login success! Welcome {customer.FirstName} {customer.LastName}");
+            //}
+            //else
+            //{
+            //    await Console.Out.WriteLineAsync("❌ Login failed. Wrong email or password.");
+            //}
         }
     }
 }

@@ -35,7 +35,7 @@
         var added = await db.InsertGetObjAsync(user);
 
         if (added != null)
-            nav.NavigateTo("/login");
+            nav.NavigateTo("/");
         else
             error = "Registration failed.";
     }

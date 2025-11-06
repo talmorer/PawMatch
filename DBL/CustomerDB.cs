@@ -57,12 +57,11 @@ namespace DBL
         {
             Dictionary<string, object> fillValues = new Dictionary<string, object>();
             Dictionary<string, object> filterValues = new Dictionary<string, object>();
-            fillValues.Add(" First Name", customer.FirstName);
-            fillValues.Add("Last Name", customer.LastName);
-            fillValues.Add("Email", customer.Email);
+            fillValues.Add("FirstName", customer.FirstName);
+            fillValues.Add("LastName", customer.LastName);
             fillValues.Add("Phone", customer.Phone);
             fillValues.Add("Password", customer.Password);
-            filterValues.Add("Customer ID", customer.UserID.ToString());
+            filterValues.Add("UserID", customer.UserID);
             return await base.UpdateAsync(fillValues, filterValues);
         }
 
