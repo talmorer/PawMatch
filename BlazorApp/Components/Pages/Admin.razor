@@ -19,7 +19,7 @@
         }
         else if (admin.IsAdmin == false)
         {
-            <p>❌ Access denied. You are not an admin.</p>
+            <p>Access denied. You are not an admin.</p>
         }
         else
         {
@@ -119,12 +119,12 @@
         if (result > 0)
         {
             users.Remove(user);
-            message = $"✅ {user.FirstName} {user.LastName} was deleted successfully.";
+            message = $"{user.FirstName} {user.LastName} was deleted successfully.";
             messageClass = "success-box";
         }
         else
         {
-            message = "❌ Delete failed.";
+            message = "Delete failed.";
             messageClass = "error-box";
         }
     }

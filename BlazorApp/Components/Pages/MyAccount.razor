@@ -90,19 +90,19 @@
             int rows = await db.UpdateAsync(user);
             if (rows > 0)
             {
-                successMessage = "✅ Update successful!";
+                successMessage = "Update successful!";
                 errorMessage = "";
                 isEditing = false;
             }
             else
             {
-                errorMessage = "❌ Update failed.";
+                errorMessage = "Update failed.";
                 successMessage = "";
             }
         }
         catch
         {
-            errorMessage = "❌ An error occurred while updating.";
+            errorMessage = "An error occurred while updating.";
             successMessage = "";
         }
     }
