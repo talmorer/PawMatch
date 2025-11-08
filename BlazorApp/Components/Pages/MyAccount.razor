@@ -6,75 +6,64 @@
 @inject NavigationManager nav
 
 <div class="account-container">
-    <div class="card">
-        <h2 class="logo">🐾 PawMatch</h2>
+    @if (user == null)
+    {
+        <div class="card">
+            <p class="error">❌ You are not logged in.</p>
+            <button class="btn" @onclick="@(() => nav.NavigateTo("/login"))">Go to Login</button>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <h2 class="logo">🐾 PawMatch</h2>
+            <h3>Welcome, @user.FirstName!</h3>
 
-        @if (user != null)
-        {
-            <h3>Welcome back, @user.FirstName 👋</h3>
-        }
-
-        <h4>My Account</h4>
-
-        @if (user == null)
-        {
-            <p>Loading your details...</p>
-        }
-        else
-        {
             @if (!isEditing)
             {
-                <div class="info">
-                    <p><strong>First Name:</strong> @user.FirstName</p>
-                    <p><strong>Last Name:</strong> @user.LastName</p>
-                    <p><strong>Email:</strong> @user.Email</p>
-                    <p><strong>Phone:</strong> @user.Phone</p>
-                </div>
+                <p><b>First Name:</b> @user.FirstName</p>
+                <p><b>Last Name:</b> @user.LastName</p>
+                <p><b>Email:</b> @user.Email</p>
+                <p><b>Phone:</b> @user.Phone</p>
 
-                <div class="btns">
-                    <button class="btn" @onclick="StartEditing">Edit Details</button>
-                    <button class="btn gray" @onclick="Logout">Logout</button>
-                </div>
+                <button class="btn" @onclick="() => isEditing = true">Edit Details</button>
+                <button class="btn gray" @onclick="Logout">Logout</button>
+
+                @if (user.IsAdmin)
+                {
+                    <button class="btn blue" @onclick="@(() => nav.NavigateTo("/admin"))">Go to Admin Panel</button>
+                }
+
+                @if (!string.IsNullOrEmpty(successMessage))
+                {
+                    <p class="success">@successMessage</p>
+                }
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <p class="error">@errorMessage</p>
+                }
             }
             else
             {
-                @if (!string.IsNullOrEmpty(message) && messageClass == "success-box")
-                {
-                    <div class="@messageClass">
-                        @message
-                        <br />
-                        <button class="btn small" @onclick="() => isEditing = false">Back to My Profile</button>
-                    </div>
-                }
-                else
-                {
-                    <EditForm Model="@user" OnValidSubmit="UpdateUser">
-                        <InputText @bind-Value="user.FirstName" class="input" placeholder="First name" />
-                        <InputText @bind-Value="user.LastName" class="input" placeholder="Last name" />
-                        <InputText @bind-Value="user.Phone" class="input" placeholder="Phone" />
-                        <InputText @bind-Value="user.Password" class="input" placeholder="Password" type="password" />
-
-                        <div class="btns">
-                            <button class="btn" type="submit">Save Changes</button>
-                            <button class="btn light" type="button" @onclick="() => isEditing = false">Cancel</button>
-                        </div>
-
-                        @if (!string.IsNullOrEmpty(message) && messageClass == "error-box")
-                        {
-                            <div class="@messageClass">@message</div>
-                        }
-                    </EditForm>
-                }
+                <EditForm Model="@user" OnValidSubmit="UpdateUser">
+                    <InputText @bind-Value="user.FirstName" placeholder="First name" class="input" />
+                    <InputText @bind-Value="user.LastName" placeholder="Last name" class="input" />
+                    <InputText @bind-Value="user.Phone" placeholder="Phone" class="input" />
+                    <InputText @bind-Value="user.Password" placeholder="Password" type="password" class="input" />
+                    <button class="btn" type="submit">Save</button>
+                    <button class="btn gray" @onclick="CancelEdit">Cancel</button>
+                </EditForm>
             }
-        }
-    </div>
+        </div>
+    }
 </div>
 
 @code {
     Customer user;
     bool isEditing = false;
-    string message = "";
-    string messageClass = "";
+    string successMessage = "";
+    string errorMessage = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -93,33 +82,36 @@
         }
     }
 
-    void StartEditing()
-    {
-        message = "";
-        messageClass = "";
-        isEditing = true;
-    }
-
     async Task UpdateUser()
     {
-        CustomerDB db = new CustomerDB();
-        int result = await db.UpdateAsync(user);
+        try
+        {
+            CustomerDB db = new CustomerDB();
+            int rows = await db.UpdateAsync(user);
+            if (rows > 0)
+            {
+                successMessage = "✅ Update successful!";
+                errorMessage = "";
+                isEditing = false;
+            }
+            else
+            {
+                errorMessage = "❌ Update failed.";
+                successMessage = "";
+            }
+        }
+        catch
+        {
+            errorMessage = "❌ An error occurred while updating.";
+            successMessage = "";
+        }
+    }
 
-        if (result > 0)
-        {
-            message = "✅ Details updated successfully!";
-            messageClass = "success-box";
-            await MySession.SetAsync("customer", user);
-        }
-        else
-        {
-            message = "❌ Update failed — no changes were saved.";
-            messageClass = "error-box";
-            var original = await MySession.GetAsync<Customer>("customer");
-            if (original.Success && original.Value != null)
-                user = original.Value;
-            StateHasChanged();
-        }
+    void CancelEdit()
+    {
+        isEditing = false;
+        successMessage = "";
+        errorMessage = "";
     }
 
     async Task Logout()
@@ -143,46 +135,21 @@
         padding: 40px;
         border-radius: 20px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        width: 340px;
-        text-align: left;
-        position: relative;
+        width: 350px;
+        text-align: center;
     }
 
     .logo {
-        text-align: center;
-        color: #2e5f3e;
-        margin-bottom: 10px;
-    }
-
-    h3 {
-        text-align: center;
-        color: #333;
-        margin-bottom: 10px;
-    }
-
-    h4 {
-        text-align: center;
         color: #2e5f3e;
         margin-bottom: 20px;
-    }
-
-    .info p {
-        margin: 8px 0;
     }
 
     .input {
         width: 100%;
         padding: 10px;
-        margin: 6px 0;
+        margin: 8px 0;
         border: 1px solid #ccc;
         border-radius: 8px;
-    }
-
-    .btns {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 20px;
     }
 
     .btn {
@@ -193,6 +160,7 @@
         border: none;
         border-radius: 8px;
         cursor: pointer;
+        margin-top: 10px;
     }
 
         .btn:hover {
@@ -200,39 +168,20 @@
         }
 
         .btn.gray {
-            background-color: #888;
+            background-color: #777;
         }
 
-        .btn.light {
-            background-color: #e5e5e5;
-            color: #333;
+        .btn.blue {
+            background-color: #2e7d9f;
         }
 
-        .btn.small {
-            padding: 6px 8px;
-            width: auto;
-            margin-top: 10px;
-        }
-
-    .success-box {
-        background-color: #dfffe0;
-        color: #2e5f3e;
-        border: 1px solid #2e5f3e;
-        border-radius: 8px;
-        padding: 15px;
-        margin-top: 20px;
-        text-align: center;
-        font-weight: bold;
+    .success {
+        color: green;
+        margin-top: 10px;
     }
 
-    .error-box {
-        background-color: #ffe3e3;
-        color: #a30000;
-        border: 1px solid #a30000;
-        border-radius: 8px;
-        padding: 15px;
-        margin-top: 20px;
-        text-align: center;
-        font-weight: bold;
+    .error {
+        color: red;
+        margin-top: 10px;
     }
 </style>

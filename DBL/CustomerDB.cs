@@ -69,7 +69,7 @@ namespace DBL
         {
             Dictionary<string, object> filterValues = new Dictionary<string, object>
             {
-                { "CustomerID", customer.UserID.ToString() }
+                { "UserID", customer.UserID.ToString() }
             };
             return await base.DeleteAsync(filterValues);
         }
@@ -77,7 +77,7 @@ namespace DBL
         public async Task<Customer> SelectByPkAsync(int id)
         {
             Dictionary<string, object> p = new Dictionary<string, object>();
-            p.Add("CustomerID", id);
+            p.Add("UserID", id);
             List<Customer> list = (List<Customer>)await SelectAllAsync(p);
             if (list.Count == 1)
                 return list[0];

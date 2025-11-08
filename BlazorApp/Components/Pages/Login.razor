@@ -35,13 +35,12 @@
 
         if (found != null)
         {
-            // שומר את כל האובייקט של המשתמש ב-SessionStorage
             await MySession.SetAsync("customer", found);
-            nav.NavigateTo("/myaccount");
+                nav.NavigateTo("/myaccount");
         }
         else
         {
-            message = "❌ Email or password incorrect.";
+            message = "Email or password incorrect.";
         }
     }
 

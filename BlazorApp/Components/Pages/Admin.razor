@@ -1,0 +1,227 @@
+﻿@page "/admin"
+@using DBL
+@using Models
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedSessionStorage MySession
+@inject NavigationManager nav
+@inject IJSRuntime js
+
+<div class="admin-container">
+    <div class="card">
+        <h2 class="logo">🐾 PawMatch</h2>
+        <h3>Admin Dashboard</h3>
+
+        <button class="btn back" @onclick="@(() => nav.NavigateTo("/myaccount"))">⬅ Back to My Account</button>
+
+        @if (admin == null)
+        {
+            <p>Loading...</p>
+        }
+        else if (admin.IsAdmin == false)
+        {
+            <p>❌ Access denied. You are not an admin.</p>
+        }
+        else
+        {
+            <p>Welcome back, @admin.FirstName 👋</p>
+
+            @if (!string.IsNullOrEmpty(message))
+            {
+                <div class="@messageClass">@message</div>
+            }
+
+            @if (users == null)
+            {
+                <p>Loading users...</p>
+            }
+            else
+            {
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Admin</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in users)
+                        {
+                            <tr>
+                                <td>@u.UserID</td>
+                                <td>@u.FirstName @u.LastName</td>
+                                <td>@u.Email</td>
+                                <td>@u.Phone</td>
+                                <td>@(u.IsAdmin ? "Yes" : "No")</td>
+                                <td>
+                                    @if (u.IsAdmin == false)
+                                    {
+                                        <button class="btn delete" @onclick="() => DeleteUser(u)">Delete</button>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:gray;">(Admin)</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    Customer admin;
+    List<Customer> users = new();
+    string message = "";
+    string messageClass = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var session = await MySession.GetAsync<Customer>("customer");
+            if (session.Success && session.Value != null)
+            {
+                admin = session.Value;
+                if (admin.IsAdmin)
+                {
+                    CustomerDB db = new CustomerDB();
+                    users = await db.GetAllAsync();
+                    StateHasChanged();
+                }
+                else
+                {
+                    nav.NavigateTo("/myaccount");
+                }
+            }
+            else
+            {
+                nav.NavigateTo("/login");
+            }
+        }
+    }
+
+    async Task DeleteUser(Customer user)
+    {
+        bool confirm = await js.InvokeAsync<bool>("confirm", $"Are you sure you want to delete {user.FirstName} {user.LastName}?");
+        if (!confirm)
+            return;
+
+        CustomerDB db = new CustomerDB();
+        int result = await db.DeleteAsync(user);
+
+        if (result > 0)
+        {
+            users.Remove(user);
+            message = $"✅ {user.FirstName} {user.LastName} was deleted successfully.";
+            messageClass = "success-box";
+        }
+        else
+        {
+            message = "❌ Delete failed.";
+            messageClass = "error-box";
+        }
+    }
+}
+
+<style>
+    .admin-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #f8faf9;
+        min-height: 100vh;
+    }
+
+    .card {
+        background: white;
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        width: 90%;
+        max-width: 900px;
+    }
+
+    .logo {
+        text-align: center;
+        color: #2e5f3e;
+    }
+
+    h3 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    .btn.back {
+        background-color: #777;
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-bottom: 15px;
+    }
+
+        .btn.back:hover {
+            background-color: #5e5e5e;
+        }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+
+        .table th, .table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .table th {
+            background-color: #2e5f3e;
+            color: white;
+        }
+
+    .btn.delete {
+        background-color: #b32121;
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+
+        .btn.delete:hover {
+            background-color: #d43c3c;
+        }
+
+    .success-box {
+        background-color: #dfffe0;
+        color: #2e5f3e;
+        border: 1px solid #2e5f3e;
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 10px;
+        text-align: center;
+        font-weight: bold;
+    }
+
+    .error-box {
+        background-color: #ffe3e3;
+        color: #a30000;
+        border: 1px solid #a30000;
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 10px;
+        text-align: center;
+        font-weight: bold;
+    }
+</style>
