@@ -105,7 +105,7 @@ namespace ConsoleUnitTesting
             Customer found = await db.SelectByEmailAndPasswordAsync(email, password);
             if (found != null)
             {
-                Console.WriteLine($"Found user:");
+                Console.WriteLine($"Found user:");               
                 Console.WriteLine($"ID: {found.UserID}");
                 Console.WriteLine($"Name: {found.FirstName} {found.LastName}");
                 Console.WriteLine($"Email: {found.Email}");

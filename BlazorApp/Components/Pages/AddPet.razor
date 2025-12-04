@@ -1,0 +1,181 @@
+﻿@page "/addpet"
+@using DBL
+@using Models
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="addpet-container">
+    <div class="card">
+
+        <h2 class="logo">🐾 PawMatch</h2>
+        <h3>Add New Pet</h3>
+
+        <input class="input" placeholder="Pet Name" @bind="petName" />
+        <input class="input" placeholder="Pet Address" @bind="petAddress" />
+        <input class="input" placeholder="Pet Type (number)" @bind="petType" />
+        <input class="input" placeholder="Pet Birth Year" @bind="petBirthYear" />
+        <input class="input" placeholder="Update User ID" @bind="updateUserID" />
+
+        <InputFile OnChange="HandleFileChange" class="input" />
+
+        <button class="btn" @onclick="AddPetToDB">Add Pet</button>
+
+        <p class="msg">@message</p>
+
+    </div>
+</div>
+
+@code {
+    // -------------------------------
+    // Fields for user input
+    // -------------------------------
+    string petName = "";
+    string petAddress = "";
+    string petType = "";
+    string petBirthYear = "";
+    string updateUserID = "";
+    string message = "";
+
+    // -------------------------------
+    // File upload
+    // -------------------------------
+    IBrowserFile? uploadedFile = null;
+
+    // Handle selected file
+    void HandleFileChange(InputFileChangeEventArgs e)
+    {
+        uploadedFile = e.File;
+    }
+
+    // -------------------------------
+    // Add pet to database
+    // -------------------------------
+    async Task AddPetToDB()
+    {
+        // Validate text fields
+        if (petName == "" || petAddress == "" || petType == "" ||
+            petBirthYear == "" || updateUserID == "")
+        {
+            message = "All fields must be filled.";
+            return;
+        }
+
+        // Validate file selection
+        if (uploadedFile == null)
+        {
+            message = "Please select an image file.";
+            return;
+        }
+
+        // Convert numeric values
+        if (!int.TryParse(petType, out int type) ||
+            !int.TryParse(petBirthYear, out int birth) ||
+            !int.TryParse(updateUserID, out int user))
+        {
+            message = "Numeric fields must contain only numbers.";
+            return;
+        }
+
+        // -------------------------------
+        // Save image to wwwroot/PetPics
+        // -------------------------------
+        string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "PetPics");
+
+        if (!Directory.Exists(folderPath))
+            Directory.CreateDirectory(folderPath);
+
+        // Create random filename
+        string randomID = Guid.NewGuid().ToString("N").Substring(0, 10);
+        string ext = Path.GetExtension(uploadedFile.Name);
+        string newFileName = $"{randomID}{ext}";
+        string fullPath = Path.Combine(folderPath, newFileName);
+
+        // Copy image to server
+        using (var stream = uploadedFile.OpenReadStream(5000000)) // 5 MB
+        using (var fileStream = File.Create(fullPath))
+        {
+            await stream.CopyToAsync(fileStream);
+        }
+
+        // -------------------------------
+        // Create Pet object
+        // -------------------------------
+        Pet p = new Pet();
+        p.PetName = petName;
+        p.PetAdress = petAddress;
+        p.PetType = type;
+        p.PetBirthYear = birth;
+        p.UpdateUserID = user;
+        p.IsActive = 1;
+
+        // Save only the NEW file name
+        p.PetPicture = newFileName;
+
+        // -------------------------------
+        // Insert pet into DB
+        // -------------------------------
+        PetsDB db = new PetsDB();
+        int result = await db.InsertAsync(p);
+
+        if (result > 0)
+            message = "Pet added successfully!";
+        else
+            message = "Error: the pet was not added.";
+    }
+}
+
+
+
+
+
+<style>
+    .addpet-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: #f8faf9;
+    }
+
+    .card {
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        width: 350px;
+        text-align: center;
+    }
+
+    .logo {
+        color: #2e5f3e;
+        margin-bottom: 20px;
+    }
+
+    .input {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+    }
+
+    .btn {
+        width: 100%;
+        background-color: #2e5f3e;
+        color: white;
+        padding: 10px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+
+        .btn:hover {
+            background-color: #3b724a;
+        }
+
+    .msg {
+        margin-top: 15px;
+        color: #2e5f3e;
+        font-weight: bold;
+    }
+</style>
