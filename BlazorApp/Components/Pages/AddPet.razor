@@ -82,7 +82,7 @@
 
         if (!Directory.Exists(folderPath))
             Directory.CreateDirectory(folderPath);
-
+            
         // Create random filename
         string randomID = Guid.NewGuid().ToString("N").Substring(0, 10);
         string ext = Path.GetExtension(uploadedFile.Name);
@@ -98,7 +98,7 @@
 
         // -------------------------------
         // Create Pet object
-        // -------------------------------
+        // ------------------------ ------
         Pet p = new Pet();
         p.PetName = petName;
         p.PetAdress = petAddress;

@@ -1,49 +1,54 @@
-﻿
-@page "/register"
+﻿@page "/register"
 @using DBL
 @using Models
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedSessionStorage MySession
 @inject NavigationManager nav
 
-<div class="register-page">
+<div class="register-container">
     <div class="card">
         <h2 class="logo">🐾 PawMatch</h2>
-        <h3>Create your account</h3>
+        <h3>Create a new account</h3>
 
-        <EditForm Model="@user" OnValidSubmit="RegisterAsync">
-            <InputText @bind-Value="user.FirstName" placeholder="First name" class="input" />
-            <InputText @bind-Value="user.LastName" placeholder="Last name" class="input" />
-            <InputText @bind-Value="user.Email" placeholder="Email" class="input" />
-            <InputText @bind-Value="user.Phone" placeholder="Phone" class="input" />
-            <InputText @bind-Value="user.Password" placeholder="Password" type="password" class="input" />
-            <button class="btn" type="submit">Register</button>
-        </EditForm>
+        <input type="text" @bind="customer.FirstName" placeholder="First Name" class="input" />
+        <input type="text" @bind="customer.LastName" placeholder="Last Name" class="input" />
+        <input type="text" @bind="customer.Email" placeholder="Email" class="input" />
+        <input type="text" @bind="customer.Phone" placeholder="Phone" class="input" />
+        <input type="password" @bind="customer.Password" placeholder="Password" class="input" />
+        <button class="btn" @onclick="RegisterUser">Register</button>
 
         <p class="switch-text">
             Already have an account? <a href="/login">Login</a>
         </p>
 
-        <p class="error">@error</p>
+        <p class="error">@message</p>
     </div>
 </div>
 
 @code {
-    Customer user = new Customer();
-    string error = "";
+    Customer customer = new Customer();
+    CustomerDB db = new CustomerDB();
+    string message = "";
 
-    async Task RegisterAsync()
+    private async Task RegisterUser()
     {
-        CustomerDB db = new CustomerDB();
-        var added = await db.InsertGetObjAsync(user);
+        if (string.IsNullOrWhiteSpace(customer.FirstName) ||
+            string.IsNullOrWhiteSpace(customer.LastName) ||
+            string.IsNullOrWhiteSpace(customer.Email) ||
+            string.IsNullOrWhiteSpace(customer.Password))
+        {
+            message = "Please fill in all fields.";
+            return;
+        }
 
-        if (added != null)
-            nav.NavigateTo("/Login");
-        else
-            error = "Registration failed.";
+        await db.InsertGetObjAsync(customer);
+        await MySession.SetAsync("customer", customer);
+        nav.NavigateTo("/myaccount");
     }
 }
 
 <style>
-    .register-page {
+    .register-container {
         display: flex;
         justify-content: center;
         align-items: center;
@@ -84,19 +89,19 @@
         margin-top: 10px;
     }
 
-    .btn:hover {
-        background-color: #3b724a;
-    }
+        .btn:hover {
+            background-color: #3b724a;
+        }
 
     .switch-text {
         margin-top: 15px;
     }
 
-    .switch-text a {
-        color: #2e5f3e;
-        text-decoration: none;
-        font-weight: bold;
-    }
+        .switch-text a {
+            color: #2e5f3e;
+            text-decoration: none;
+            font-weight: bold;
+        }
 
     .error {
         color: red;

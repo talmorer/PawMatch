@@ -2,19 +2,16 @@
 @using DBL
 @using Models
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-@inject ProtectedSessionStorage MySession
-@inject NavigationManager nav
+@inject IServiceProvider ServiceProvider
 
 <div class="login-container">
     <div class="card">
         <h2 class="logo">🐾 PawMatch</h2>
         <h3>Login</h3>
 
-        <EditForm Model="@loginData" OnValidSubmit="CheckLogin">
-            <InputText @bind-Value="loginData.Email" placeholder="Email" class="input" />
-            <InputText @bind-Value="loginData.Password" placeholder="Password" type="password" class="input" />
-            <button class="btn" type="submit">Login</button>
-        </EditForm>
+        <input type="text" @bind="loginData.Email" placeholder="Email" class="input" />
+        <input type="password" @bind="loginData.Password" placeholder="Password" class="input" />
+        <button class="btn" @onclick="CheckLogin">Login</button>
 
         <p class="switch-text">
             Don't have an account? <a href="/register">Register</a>
@@ -25,30 +22,47 @@
 </div>
 
 @code {
+    CustomerDB db = new CustomerDB();
+    ProtectedSessionStorage MySession;
+    NavigationManager nav;
     LoginData loginData = new LoginData();
     string message = "";
 
-    async Task CheckLogin()
+    // initialize services manually
+    protected override void OnInitialized()
     {
-        CustomerDB db = new CustomerDB();
+        nav = (NavigationManager)ServiceProvider.GetService(typeof(NavigationManager));
+        MySession = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
+    }
+
+    private async Task CheckLogin()
+    {
+        if (string.IsNullOrWhiteSpace(loginData.Email) || string.IsNullOrWhiteSpace(loginData.Password))
+        {
+            message = "Please enter both email and password.";
+            return;
+        }
+
         Customer found = await db.SelectByEmailAndPasswordAsync(loginData.Email, loginData.Password);
 
         if (found != null)
         {
             await MySession.SetAsync("customer", found);
-                nav.NavigateTo("/myaccount");
+            message = $"✅ Welcome back, {found.FirstName}!";
+            await Task.Delay(1000);
+            nav.NavigateTo("/myaccount");
         }
         else
         {
-            message = "Email or password incorrect.";
+            message = "❌ Email or password incorrect.";
         }
     }
+}
 
-    public class LoginData
-    {
-        public string Email { get; set; }
-        public string Password { get; set; }
-    }
+public class LoginData
+{
+    public string Email { get; set; }
+    public string Password { get; set; }
 }
 
 <style>
