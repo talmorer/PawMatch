@@ -2,6 +2,7 @@
 @using DBL
 @using Models
 @using Microsoft.AspNetCore.Components.Forms
+@using System.Linq
 
 <div class="addpet-container">
     <div class="card">
@@ -11,11 +12,27 @@
 
         <input class="input" placeholder="Pet Name" @bind="petName" />
         <input class="input" placeholder="Pet Address" @bind="petAddress" />
-        <input class="input" placeholder="Pet Type (number)" @bind="petType" />
+
+        <select class="input" value="@selectedTypeId" @onchange="TypeChanged">
+            <option value="0" disabled>Select Pet Type</option>
+            @foreach (var t in types)
+            {
+                <option value="@t.TypeID">@t.Description</option>
+            }
+        </select>
+
+        <select class="input" value="@selectedRaiceId" @onchange="RaiceChanged" disabled="@(filteredRaices.Count == 0)">
+            <option value="0" disabled>Select Pet Breed</option>
+            @foreach (var r in filteredRaices)
+            {
+                <option value="@r.PetRaiceID">@r.Description</option>
+            }
+        </select>
+
         <input class="input" placeholder="Pet Birth Year" @bind="petBirthYear" />
         <input class="input" placeholder="Update User ID" @bind="updateUserID" />
 
-        <InputFile OnChange="HandleFileChange" class="input" />
+        <InputFile OnChange="@HandleFileChange" class="input" />
 
         <button class="btn" @onclick="AddPetToDB">Add Pet</button>
 
@@ -30,20 +47,73 @@
     // -------------------------------
     string petName = "";
     string petAddress = "";
-    string petType = "";
     string petBirthYear = "";
     string updateUserID = "";
     string message = "";
+
+    // -------------------------------
+    // Dropdown data
+    // -------------------------------
+    List<PetType> types = new List<PetType>();
+    List<PetRaice> raices = new List<PetRaice>();
+    List<PetRaice> filteredRaices = new List<PetRaice>();
+
+    int selectedTypeId = 0;
+    int selectedRaiceId = 0;
 
     // -------------------------------
     // File upload
     // -------------------------------
     IBrowserFile? uploadedFile = null;
 
-    // Handle selected file
     void HandleFileChange(InputFileChangeEventArgs e)
     {
         uploadedFile = e.File;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        PetTypeDB tdb = new PetTypeDB();
+        PetRaiceDB rdb = new PetRaiceDB();
+
+        types = await tdb.GetAllAsync();
+        raices = await rdb.GetAllAsync();
+
+        if (types.Count > 0)
+        {
+            selectedTypeId = types[0].TypeID;
+            RefreshRaicesByType();
+        }
+    }
+
+    void RefreshRaicesByType()
+    {
+        filteredRaices = raices
+            .Where(x => x.PetTypeID.HasValue && x.PetTypeID.Value == selectedTypeId)
+            .ToList();
+
+        selectedRaiceId = filteredRaices.Count > 0 ? filteredRaices[0].PetRaiceID : 0;
+    }
+
+    void TypeChanged(ChangeEventArgs e)
+    {
+        if (e.Value == null) return;
+
+        if (int.TryParse(e.Value.ToString(), out int id))
+        {
+            selectedTypeId = id;
+            RefreshRaicesByType();
+        }
+    }
+
+    void RaiceChanged(ChangeEventArgs e)
+    {
+        if (e.Value == null) return;
+
+        if (int.TryParse(e.Value.ToString(), out int id))
+        {
+            selectedRaiceId = id;
+        }
     }
 
     // -------------------------------
@@ -51,25 +121,31 @@
     // -------------------------------
     async Task AddPetToDB()
     {
-        // Validate text fields
-        if (petName == "" || petAddress == "" || petType == "" ||
-            petBirthYear == "" || updateUserID == "")
+        if (petName == "" || petAddress == "" || petBirthYear == "" || updateUserID == "")
         {
             message = "All fields must be filled.";
             return;
         }
 
-        // Validate file selection
+        if (selectedTypeId == 0)
+        {
+            message = "Please select a pet type.";
+            return;
+        }
+
+        if (selectedRaiceId == 0)
+        {
+            message = "Please select a pet breed.";
+            return;
+        }
+
         if (uploadedFile == null)
         {
             message = "Please select an image file.";
             return;
         }
 
-        // Convert numeric values
-        if (!int.TryParse(petType, out int type) ||
-            !int.TryParse(petBirthYear, out int birth) ||
-            !int.TryParse(updateUserID, out int user))
+        if (!int.TryParse(petBirthYear, out int birth) || !int.TryParse(updateUserID, out int user))
         {
             message = "Numeric fields must contain only numbers.";
             return;
@@ -82,15 +158,13 @@
 
         if (!Directory.Exists(folderPath))
             Directory.CreateDirectory(folderPath);
-            
-        // Create random filename
+
         string randomID = Guid.NewGuid().ToString("N").Substring(0, 10);
         string ext = Path.GetExtension(uploadedFile.Name);
         string newFileName = $"{randomID}{ext}";
         string fullPath = Path.Combine(folderPath, newFileName);
 
-        // Copy image to server
-        using (var stream = uploadedFile.OpenReadStream(5000000)) // 5 MB
+        using (var stream = uploadedFile.OpenReadStream(5000000))
         using (var fileStream = File.Create(fullPath))
         {
             await stream.CopyToAsync(fileStream);
@@ -98,16 +172,19 @@
 
         // -------------------------------
         // Create Pet object
-        // ------------------------ ------
+        // -------------------------------
         Pet p = new Pet();
         p.PetName = petName;
         p.PetAdress = petAddress;
-        p.PetType = type;
+
+        p.PetType = selectedTypeId;
+
+        // If your Pet model uses a different property name, change it here.
+        p.PetType = selectedRaiceId;
+
         p.PetBirthYear = birth;
         p.UpdateUserID = user;
         p.IsActive = 1;
-
-        // Save only the NEW file name
         p.PetPicture = newFileName;
 
         // -------------------------------
@@ -122,10 +199,6 @@
             message = "Error: the pet was not added.";
     }
 }
-
-
-
-
 
 <style>
     .addpet-container {

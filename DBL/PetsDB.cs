@@ -57,7 +57,7 @@ namespace DBL
                 { "PetAdress", pet.PetAdress },
                 { "PetPicture", pet.PetPicture },
                 { "PetType", pet.PetType },
-                { "PetBirthYear", pet.PetBirthYear },
+                { "PetBi rthYear", pet.PetBirthYear },
                 { "UpdateUserID", pet.UpdateUserID },
                 { "IsActive", pet.IsActive }
             };
