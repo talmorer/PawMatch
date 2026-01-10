@@ -159,10 +159,10 @@ namespace ConsoleUnitTesting
             Console.WriteLine($"PetType GetAllAsync count: {allTypes.Count}");
 
             // ----- PetRaiceDB tests -----
-            PetRaiceDB raiceDb = new PetRaiceDB();
+            PetRaceDB raiceDb = new PetRaceDB();
 
             // InsertGetObj (PetRaice)
-            PetRaice r = new PetRaice
+            PetRace r = new PetRace
             {
                 Description = "TestRaice_" + Guid.NewGuid().ToString("N").Substring(0, 8),
                 PetTypeID = t.TypeID
@@ -177,7 +177,7 @@ namespace ConsoleUnitTesting
             Console.WriteLine($"PetRaice inserted: PetRaiceID={r.PetRaiceID}, Description={r.Description}, PetTypeID={r.PetTypeID}");
 
             // SelectByPk (PetRaice)
-            PetRaice r2 = await raiceDb.SelectByPkAsync(r.PetRaiceID);
+            PetRace r2 = await raiceDb.SelectByPkAsync(r.PetRaiceID);
             if (r2 == null)
             {
                 Console.WriteLine("PetRaice SelectByPkAsync failed");

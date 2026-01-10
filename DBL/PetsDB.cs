@@ -29,103 +29,101 @@ namespace DBL
             p.PetBirthYear = int.Parse(row[5].ToString());
             p.UpdateUserID = int.Parse(row[6].ToString());
             p.IsActive = int.Parse(row[7].ToString());
+            p.PetRaceID = int.Parse(row[8].ToString());
+
+            p.TypeName = row[9].ToString();
+            p.RaceName = row[10].ToString();
+
+            p.UploaderFirstName = row[11].ToString();
+            p.UploaderLastName = row[12].ToString();
+            p.UploaderEmail = row[13].ToString();
+            p.UploaderPhone = row[14].ToString();
 
             return p;
         }
 
-        // Get all pets
+        public async Task<List<Pet>> SearchAsync(int typeID, int raceID, string text)
+        {
+            string sql = @"
+SELECT 
+    p.PetID, p.PetName, p.PetAdress, p.PetPicture, p.PetType, p.PetBirthYear, p.UpdateUserID, p.IsActive, p.PetRaceID,
+    t.Description AS TypeName,
+    r.Description AS RaceName,
+    u.FirstName, u.LastName, u.Email, u.Phone
+FROM pets p
+INNER JOIN pet_type t ON t.TypeID = p.PetType
+INNER JOIN pet_race r ON r.PetRaceID = p.PetRaceID
+INNER JOIN users u ON u.UserID = p.UpdateUserID
+WHERE p.IsActive = 1
+";
+
+            Dictionary<string, object> prms = new Dictionary<string, object>();
+
+            if (typeID > 0)
+            {
+                sql += " AND p.PetType = @PetType";
+                prms.Add("PetType", typeID);
+            }
+
+            if (raceID > 0)
+            {
+                sql += " AND p.PetRaceID = @PetRaceID";
+                prms.Add("PetRaceID", raceID);
+            }
+
+            if (!string.IsNullOrEmpty(text))
+            {
+                sql += " AND (p.PetName LIKE @Txt OR p.PetAdress LIKE @Txt)";
+                prms.Add("Txt", "%" + text + "%");
+            }
+
+            sql += " ORDER BY p.PetID DESC;";
+
+            return (List<Pet>)await SelectAllAsync(sql, prms);
+        }
+
+        public async Task<Pet> InsertGetObjAsync(Pet p)
+        {
+            Dictionary<string, object> v = new Dictionary<string, object>()
+            {
+                { "PetName", p.PetName },
+                { "PetAdress", p.PetAdress },
+                { "PetPicture", p.PetPicture },
+                { "PetType", p.PetType },
+                { "PetBirthYear", p.PetBirthYear },
+                { "UpdateUserID", p.UpdateUserID },
+                { "IsActive", p.IsActive },
+                { "PetRaceID", p.PetRaceID }
+            };
+
+            return await base.InsertGetObjAsync(v);
+        }
+
+        public async Task<int> UpdateAsync(Pet p)
+        {
+            Dictionary<string, object> v = new Dictionary<string, object>()
+            {
+                { "PetName", p.PetName },
+                { "PetAdress", p.PetAdress },
+                { "PetPicture", p.PetPicture },
+                { "PetType", p.PetType },
+                { "PetBirthYear", p.PetBirthYear },
+                { "UpdateUserID", p.UpdateUserID },
+                { "IsActive", p.IsActive },
+                { "PetRaceID", p.PetRaceID }
+            };
+
+            Dictionary<string, object> filter = new Dictionary<string, object>()
+            {
+                { "PetID", p.PetID }
+            };
+
+            return await base.UpdateAsync(v, filter);
+        }
         public async Task<List<Pet>> GetAllAsync()
         {
-            return (List<Pet>)await SelectAllAsync();
+            return await SearchAsync(0, 0, "");
         }
 
-        // Get only active pets
-        public async Task<List<Pet>> GetActiveAsync()
-        {
-            var filter = new Dictionary<string, object>();
-            filter.Add("IsActive", 1);
-
-            return (List<Pet>)await SelectAllAsync(filter);
-        }
-
-        // Insert pet and get object back
-        public async Task<Pet> InsertGetObjAsync(Pet pet)
-        {
-            Dictionary<string, object> values = new Dictionary<string, object>()
-            {
-                { "PetName", pet.PetName },
-                { "PetAdress", pet.PetAdress },
-                { "PetPicture", pet.PetPicture },
-                { "PetType", pet.PetType },
-                { "PetBi rthYear", pet.PetBirthYear },
-                { "UpdateUserID", pet.UpdateUserID },
-                { "IsActive", pet.IsActive }
-            };
-
-            return await base.InsertGetObjAsync(values);
-        }
-
-        // Insert pet (no return)
-        public async Task<int> InsertAsync(Pet pet)
-        {
-            Dictionary<string, object> values = new Dictionary<string, object>()
-            {
-                { "PetName", pet.PetName },
-                { "PetAdress", pet.PetAdress },
-                { "PetPicture", pet.PetPicture },
-                { "PetType", pet.PetType },
-                { "PetBirthYear", pet.PetBirthYear },
-                { "UpdateUserID", pet.UpdateUserID },
-                { "IsActive", pet.IsActive }
-            };
-
-            return await base.InsertAsync(values);
-        }
-
-        // Update pet
-        public async Task<int> UpdateAsync(Pet pet)
-        {
-            Dictionary<string, object> values = new Dictionary<string, object>()
-            {
-                { "PetName", pet.PetName },
-                { "PetAdress", pet.PetAdress },
-                { "PetPicture", pet.PetPicture },
-                { "PetType", pet.PetType },
-                { "PetBirthYear", pet.PetBirthYear },
-                { "UpdateUserID", pet.UpdateUserID },
-                { "IsActive", pet.IsActive }
-            };
-
-            Dictionary<string, object> filter = new Dictionary<string, object>()
-            {
-                { "PetID", pet.PetID }
-            };
-
-            return await base.UpdateAsync(values, filter);
-        }
-
-        // Delete pet
-        public async Task<int> DeleteAsync(int petID)
-        {
-            Dictionary<string, object> filter = new Dictionary<string, object>()
-            {
-                { "PetID", petID }
-            };
-
-            return await base.DeleteAsync(filter);
-        }
-
-        // Select pet by ID
-        public async Task<Pet> SelectByPkAsync(int id)
-        {
-            var filter = new Dictionary<string, object>();
-            filter.Add("PetID", id);
-
-            List<Pet> list = (List<Pet>)await SelectAllAsync(filter);
-            if (list.Count == 1)
-                return list[0];
-
-            return null;
-        }
     }
 }

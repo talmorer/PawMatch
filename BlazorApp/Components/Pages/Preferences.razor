@@ -1,0 +1,165 @@
+﻿@page "/preferences"
+@using DBL
+@using Models
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+
+<h2 class="title">Preferences</h2>
+
+@if (!loaded)
+{
+    <p>Loading...</p>
+}
+else if (cu == null)
+{
+    <p>You are not logged in.</p>
+}
+else
+{
+    <div class="box">
+        <select class="input" @bind="typeID" @bind:after="TypeChanged">
+            <option value="0">Select Type</option>
+            @foreach (var t in types)
+            {
+                <option value="@t.TypeID">@t.Description</option>
+            }
+        </select>
+
+        <select class="input" @bind="raceID">
+            <option value="0">Select Race</option>
+            @foreach (var r in races)
+            {
+                <option value="@r.PetRaceID">@r.Description</option>
+            }
+        </select>
+
+        <button class="btn" @onclick="Save">Save</button>
+        <p class="msg">@msg</p>
+    </div>
+}
+
+@code {
+    [Inject] ProtectedSessionStorage MySession { get; set; }
+    [Inject] NavigationManager nav { get; set; }
+
+    Customer cu;
+    bool loaded = false;
+
+    List<PetType> types = new();
+    List<PetRace> races = new();
+
+    int typeID = 0;
+    int raceID = 0;
+
+    string msg = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var res = await MySession.GetAsync<Customer>("customer");
+        if (res.Success && res.Value != null)
+        {
+            cu = res.Value;
+
+            PetTypeDB tdb = new PetTypeDB();
+            types = await tdb.GetAllAsync();
+
+            UserPrefsDB pdb = new UserPrefsDB();
+            var pr = await pdb.GetPrefsAsync(cu.UserID);
+
+            if (pr != null)
+            {
+                typeID = pr.PrefTypeID;
+                raceID = pr.PrefRaceID;
+
+                if (typeID != 0)
+                {
+                    PetRaceDB rdb = new PetRaceDB();
+                    races = await rdb.GetByTypeAsync(typeID);
+                }
+            }
+        }
+
+        loaded = true;
+        StateHasChanged();
+    }
+
+    async Task TypeChanged()
+    {
+        raceID = 0;
+
+        if (typeID == 0)
+        {
+            races = new();
+            return;
+        }
+
+        PetRaceDB rdb = new PetRaceDB();
+        races = await rdb.GetByTypeAsync(typeID);
+    }
+
+    async Task Save()
+    {
+        if (cu == null)
+        {
+            nav.NavigateTo("/login", true);
+            return;
+        }
+
+        UserPrefs p = new UserPrefs
+        {
+            UserID = cu.UserID,
+            CanAdopt = 0,
+            CanUpload = 0,
+            PrefTypeID = typeID,
+            PrefRaceID = raceID
+        };
+
+        UserPrefsDB pdb = new UserPrefsDB();
+        await pdb.SavePrefsAsync(p);
+
+        msg = "Saved!";
+    }
+}
+
+<style>
+    .title {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #2e5f3e;
+    }
+
+    .box {
+        width: 420px;
+        margin: auto;
+        padding: 30px;
+        border-radius: 20px;
+        background: #fff;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .input {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+    }
+
+    .btn {
+        width: 100%;
+        padding: 12px;
+        background: #2e5f3e;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 10px;
+        font-weight: 800;
+    }
+
+    .msg {
+        margin-top: 10px;
+        font-weight: 800;
+    }
+</style>

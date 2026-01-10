@@ -1,0 +1,43 @@
+﻿@page "/pets"
+@using DBL
+@using Models
+@inject NavigationManager nav
+
+<h2 class="title">Available Pets</h2>
+
+@if (pets == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="pets-grid">
+        @foreach (var p in pets)
+        {
+            <div class="pet-card">
+                <img src="@($"PetPics/{p.PetPicture}")" class="pet-img" />
+
+                <h3>@p.PetName</h3>
+                <p><b>Type:</b> @p.PetType</p>
+                <p><b>Birth Year:</b> @p.PetBirthYear</p>
+
+                <button class="btn" @onclick="() => GoToPet(p.PetID)">View</button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    List<Pet> pets;
+
+    protected override async Task OnInitializedAsync()
+    {
+        PetsDB db = new PetsDB();
+        pets = await db.GetAllAsync(); 
+    }
+
+    void GoToPet(int id)
+    {
+       nav.NavigateTo($"/pet/{id}");
+    }
+}

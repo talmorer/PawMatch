@@ -1,254 +1,214 @@
 ﻿@page "/addpet"
 @using DBL
 @using Models
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @using Microsoft.AspNetCore.Components.Forms
-@using System.Linq
 
-<div class="addpet-container">
-    <div class="card">
+<h2 class="title">Add New Pet</h2>
 
-        <h2 class="logo">🐾 PawMatch</h2>
-        <h3>Add New Pet</h3>
+@if (!loaded)
+{
+    <p>Loading...</p>
+}
+else if (cu == null)
+{
+    <p>You are not logged in.</p>
+}
+else
+{
+    <div class="form-container">
 
         <input class="input" placeholder="Pet Name" @bind="petName" />
         <input class="input" placeholder="Pet Address" @bind="petAddress" />
 
-        <select class="input" value="@selectedTypeId" @onchange="TypeChanged">
-            <option value="0" disabled>Select Pet Type</option>
+        <select class="input" @bind="selectedTypeID" @bind:after="TypeChanged">
+            <option value="0">Select Type</option>
             @foreach (var t in types)
             {
                 <option value="@t.TypeID">@t.Description</option>
             }
         </select>
 
-        <select class="input" value="@selectedRaiceId" @onchange="RaiceChanged" disabled="@(filteredRaices.Count == 0)">
-            <option value="0" disabled>Select Pet Breed</option>
-            @foreach (var r in filteredRaices)
+        <select class="input" @bind="selectedRaceID">
+            <option value="0">Select Race</option>
+            @foreach (var r in races)
             {
-                <option value="@r.PetRaiceID">@r.Description</option>
+                <option value="@r.PetRaceID">@r.Description</option>
             }
         </select>
 
-        <input class="input" placeholder="Pet Birth Year" @bind="petBirthYear" />
-        <input class="input" placeholder="Update User ID" @bind="updateUserID" />
+        <input class="input" placeholder="Birth Year" @bind="birthYearText" />
 
-        <InputFile OnChange="@HandleFileChange" class="input" />
+        <InputFile class="input" OnChange="HandleFile" />
 
         <button class="btn" @onclick="AddPetToDB">Add Pet</button>
 
-        <p class="msg">@message</p>
-
+        <p>@message</p>
     </div>
-</div>
+}
 
 @code {
-    // -------------------------------
-    // Fields for user input
-    // -------------------------------
+    [Inject] ProtectedSessionStorage MySession { get; set; }
+    [Inject] NavigationManager nav { get; set; }
+
+    Customer cu;
+    bool loaded = false;
+
     string petName = "";
     string petAddress = "";
-    string petBirthYear = "";
-    string updateUserID = "";
+    int selectedTypeID = 0;
+    int selectedRaceID = 0;
+
+    string birthYearText = "";
+    string fileName = "";
     string message = "";
 
-    // -------------------------------
-    // Dropdown data
-    // -------------------------------
-    List<PetType> types = new List<PetType>();
-    List<PetRaice> raices = new List<PetRaice>();
-    List<PetRaice> filteredRaices = new List<PetRaice>();
+    List<PetType> types = new();
+    List<PetRace> races = new();
 
-    int selectedTypeId = 0;
-    int selectedRaiceId = 0;
-
-    // -------------------------------
-    // File upload
-    // -------------------------------
-    IBrowserFile? uploadedFile = null;
-
-    void HandleFileChange(InputFileChangeEventArgs e)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        uploadedFile = e.File;
+        if (!firstRender) return;
+
+        var res = await MySession.GetAsync<Customer>("customer");
+        if (res.Success && res.Value != null)
+        {
+            cu = res.Value;
+
+            PetTypeDB tdb = new PetTypeDB();
+            types = await tdb.GetAllAsync();
+        }
+
+        loaded = true;
+        StateHasChanged();
     }
 
-    protected override async Task OnInitializedAsync()
+    async Task TypeChanged()
     {
-        PetTypeDB tdb = new PetTypeDB();
-        PetRaiceDB rdb = new PetRaiceDB();
+        selectedRaceID = 0;
+        races = new();
+        message = "";
 
-        types = await tdb.GetAllAsync();
-        raices = await rdb.GetAllAsync();
+        if (selectedTypeID == 0) return;
 
-        if (types.Count > 0)
+        PetRaceDB rdb = new PetRaceDB();
+        races = await rdb.GetByTypeAsync(selectedTypeID);
+    }
+
+    async Task HandleFile(InputFileChangeEventArgs e)
+    {
+        try
         {
-            selectedTypeId = types[0].TypeID;
-            RefreshRaicesByType();
+            message = "";
+
+            var file = e.File;
+            if (file == null)
+            {
+                fileName = "";
+                message = "No file selected.";
+                return;
+            }
+
+            string ext = Path.GetExtension(file.Name);
+            string newName = Guid.NewGuid().ToString() + ext;
+
+            string folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "PetPics");
+            Directory.CreateDirectory(folder);
+
+            string path = Path.Combine(folder, newName);
+
+            long maxSize = 10 * 1024 * 1024; // 10MB
+            using var fs = new FileStream(path, FileMode.Create);
+            await file.OpenReadStream(maxSize).CopyToAsync(fs);
+
+            fileName = newName;
+            message = "Picture selected.";
+        }
+        catch (Exception ex)
+        {
+            fileName = "";
+            message = "Upload failed: " + ex.Message;
         }
     }
 
-    void RefreshRaicesByType()
-    {
-        filteredRaices = raices
-            .Where(x => x.PetTypeID.HasValue && x.PetTypeID.Value == selectedTypeId)
-            .ToList();
-
-        selectedRaiceId = filteredRaices.Count > 0 ? filteredRaices[0].PetRaiceID : 0;
-    }
-
-    void TypeChanged(ChangeEventArgs e)
-    {
-        if (e.Value == null) return;
-
-        if (int.TryParse(e.Value.ToString(), out int id))
-        {
-            selectedTypeId = id;
-            RefreshRaicesByType();
-        }
-    }
-
-    void RaiceChanged(ChangeEventArgs e)
-    {
-        if (e.Value == null) return;
-
-        if (int.TryParse(e.Value.ToString(), out int id))
-        {
-            selectedRaiceId = id;
-        }
-    }
-
-    // -------------------------------
-    // Add pet to database
-    // -------------------------------
     async Task AddPetToDB()
     {
-        if (petName == "" || petAddress == "" || petBirthYear == "" || updateUserID == "")
+        if (cu == null)
         {
-            message = "All fields must be filled.";
+            nav.NavigateTo("/login", true);
             return;
         }
 
-        if (selectedTypeId == 0)
+        if (selectedTypeID == 0 || selectedRaceID == 0)
         {
-            message = "Please select a pet type.";
+            message = "Please select type and race.";
             return;
         }
 
-        if (selectedRaiceId == 0)
+        if (string.IsNullOrWhiteSpace(fileName))
         {
-            message = "Please select a pet breed.";
+            message = "Please upload a picture.";
             return;
         }
 
-        if (uploadedFile == null)
+        if (!int.TryParse(birthYearText, out int birthYear))
         {
-            message = "Please select an image file.";
+            message = "Birth Year must be a number.";
             return;
         }
 
-        if (!int.TryParse(petBirthYear, out int birth) || !int.TryParse(updateUserID, out int user))
-        {
-            message = "Numeric fields must contain only numbers.";
-            return;
-        }
-
-        // -------------------------------
-        // Save image to wwwroot/PetPics
-        // -------------------------------
-        string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "PetPics");
-
-        if (!Directory.Exists(folderPath))
-            Directory.CreateDirectory(folderPath);
-
-        string randomID = Guid.NewGuid().ToString("N").Substring(0, 10);
-        string ext = Path.GetExtension(uploadedFile.Name);
-        string newFileName = $"{randomID}{ext}";
-        string fullPath = Path.Combine(folderPath, newFileName);
-
-        using (var stream = uploadedFile.OpenReadStream(5000000))
-        using (var fileStream = File.Create(fullPath))
-        {
-            await stream.CopyToAsync(fileStream);
-        }
-
-        // -------------------------------
-        // Create Pet object
-        // -------------------------------
-        Pet p = new Pet();
-        p.PetName = petName;
-        p.PetAdress = petAddress;
-
-        p.PetType = selectedTypeId;
-
-        // If your Pet model uses a different property name, change it here.
-        p.PetType = selectedRaiceId;
-
-        p.PetBirthYear = birth;
-        p.UpdateUserID = user;
-        p.IsActive = 1;
-        p.PetPicture = newFileName;
-
-        // -------------------------------
-        // Insert pet into DB
-        // -------------------------------
         PetsDB db = new PetsDB();
-        int result = await db.InsertAsync(p);
 
-        if (result > 0)
-            message = "Pet added successfully!";
-        else
-            message = "Error: the pet was not added.";
+        Pet p = new Pet
+        {
+            PetName = petName,
+            PetAdress = petAddress,
+            PetType = selectedTypeID,
+            PetRaceID = selectedRaceID,
+            PetBirthYear = birthYear,
+            PetPicture = fileName,
+            UpdateUserID = cu.UserID,
+            IsActive = 1
+        };
+
+        var inserted = await db.InsertGetObjAsync(p);
+        message = inserted == null ? "Insert failed." : "Pet added successfully!";
     }
 }
 
 <style>
-    .addpet-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        background: #f8faf9;
-    }
-
-    .card {
-        background: white;
-        padding: 40px;
+    .form-container {
+        width: 420px;
+        margin: auto;
+        padding: 30px;
         border-radius: 20px;
+        background: #fff;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        width: 350px;
-        text-align: center;
     }
 
-    .logo {
-        color: #2e5f3e;
+    .title {
+        text-align: center;
         margin-bottom: 20px;
+        color: #2e5f3e;
     }
 
     .input {
         width: 100%;
-        padding: 10px;
-        margin: 8px 0;
-        border: 1px solid #ccc;
+        padding: 12px;
+        margin: 10px 0;
         border-radius: 8px;
+        border: 1px solid #ccc;
     }
 
     .btn {
         width: 100%;
-        background-color: #2e5f3e;
+        padding: 12px;
+        background: #2e5f3e;
         color: white;
-        padding: 10px;
         border: none;
         border-radius: 8px;
         cursor: pointer;
         margin-top: 10px;
-    }
-
-        .btn:hover {
-            background-color: #3b724a;
-        }
-
-    .msg {
-        margin-top: 15px;
-        color: #2e5f3e;
-        font-weight: bold;
+        font-weight: 800;
     }
 </style>

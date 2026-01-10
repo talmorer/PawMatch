@@ -2,18 +2,18 @@
 
 namespace Models
 {
-    public class PetRaice
+    public class PetRace
     {
-        public PetRaice() { }
+        public PetRace() { }
 
-        public PetRaice(int petRaiceID, string description, int? petTypeID)
+        public PetRace(int petRaceID, string description, int? petTypeID)
         {
-            PetRaiceID = petRaiceID;
+            PetRaceID = petRaceID;
             Description = description;
             PetTypeID = petTypeID;
         }
 
-        public int PetRaiceID { get; set; }
+        public int PetRaceID { get; set; }
         public string Description { get; set; }
         public int? PetTypeID { get; set; }
     }

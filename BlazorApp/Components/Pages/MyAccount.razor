@@ -33,27 +33,16 @@
                 {
                     <button class="btn blue" @onclick="@(() => nav.NavigateTo("/admin"))">Go to Admin Panel</button>
                 }
-
-                @if (!string.IsNullOrEmpty(successMessage))
-                {
-                    <p class="success">@successMessage</p>
-                }
-
-                @if (!string.IsNullOrEmpty(errorMessage))
-                {
-                    <p class="error">@errorMessage</p>
-                }
             }
-            else
+            else   @*  *@
             {
-                <EditForm Model="@user" OnValidSubmit="UpdateUser">
-                    <InputText @bind-Value="user.FirstName" placeholder="First name" class="input" />
-                    <InputText @bind-Value="user.LastName" placeholder="Last name" class="input" />
-                    <InputText @bind-Value="user.Phone" placeholder="Phone" class="input" />
-                    <InputText @bind-Value="user.Password" placeholder="Password" type="password" class="input" />
-                    <button class="btn" type="submit">Save</button>
-                    <button class="btn gray" @onclick="CancelEdit">Cancel</button>
-                </EditForm>
+                <input class="input" @bind="user.FirstName" placeholder="First name" />
+                <input class="input" @bind="user.LastName" placeholder="Last name" />
+                <input class="input" @bind="user.Phone" placeholder="Phone" />
+                <input class="input" type="password" @bind="user.Password" placeholder="Password" />
+
+                <button class="btn" @onclick="UpdateUser">Save</button>
+                <button class="btn gray" @onclick="CancelEdit">Cancel</button>
             }
         </div>
     }
@@ -62,57 +51,29 @@
 @code {
     Customer user;
     bool isEditing = false;
-    string successMessage = "";
-    string errorMessage = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             var result = await MySession.GetAsync<Customer>("customer");
-            if (result.Success && result.Value != null)
+            if (result.Success)
             {
                 user = result.Value;
                 StateHasChanged();
             }
-            else
-            {
-                nav.NavigateTo("/login");
-            }
+            else nav.NavigateTo("/login");
         }
     }
 
     async Task UpdateUser()
     {
-        try
-        {
-            CustomerDB db = new CustomerDB();
-            int rows = await db.UpdateAsync(user);
-            if (rows > 0)
-            {
-                successMessage = "Update successful!";
-                errorMessage = "";
-                isEditing = false;
-            }
-            else
-            {
-                errorMessage = "Update failed.";
-                successMessage = "";
-            }
-        }
-        catch
-        {
-            errorMessage = "An error occurred while updating.";
-            successMessage = "";
-        }
+        CustomerDB db = new CustomerDB();
+        await db.UpdateAsync(user);
+        isEditing = false;
     }
 
-    void CancelEdit()
-    {
-        isEditing = false;
-        successMessage = "";
-        errorMessage = "";
-    }
+    void CancelEdit() => isEditing = false;
 
     async Task Logout()
     {
@@ -120,7 +81,6 @@
         nav.NavigateTo("/login");
     }
 }
-
 <style>
     .account-container {
         display: flex;

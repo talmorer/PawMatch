@@ -34,5 +34,14 @@ namespace Models
         public int PetBirthYear { get; set; }
         public int UpdateUserID { get; set; }
         public int IsActive { get; set; }
+        public int PetRaceID { get; set; }
+        public string TypeName { get; set; }
+        public string RaceName { get; set; }
+        public string UploaderFirstName { get; set; }
+        public string UploaderLastName { get; set; }
+        public string UploaderEmail { get; set; }
+        public string UploaderPhone { get; set; }
+
+
     }
 }

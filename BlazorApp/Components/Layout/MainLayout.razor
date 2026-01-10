@@ -1,9 +1,64 @@
 ﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Routing
 
-@Body
+<div class="topbar">
+    <div class="brand">🐾 PawMatch</div>
 
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
+    <div class="links">
+        <NavLink href="/" class="lnk" Match="NavLinkMatch.All">Home</NavLink>
+        <NavLink href="/addpet" class="lnk">Add Pet</NavLink>
+        <NavLink href="/preferences" class="lnk">Preferences</NavLink>
+        <NavLink href="/myaccount" class="lnk">My Account</NavLink>
+        <NavLink href="/login" class="lnk">Login</NavLink>
+    </div>
 </div>
+
+<div class="body">
+    @Body
+</div>
+
+<style>
+    .topbar {
+        height: 60px;
+        background: #ffffff;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+    }
+
+    .brand {
+        font-weight: 900;
+        color: #2e5f3e;
+        font-size: 20px;
+    }
+
+    .links {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .lnk {
+        text-decoration: none;
+        color: #222;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-weight: 700;
+    }
+
+        .lnk.active {
+            background: #2e5f3e;
+            color: white;
+        }
+
+    .body {
+        min-height: calc(100vh - 60px);
+        background: #f8faf9;
+        padding: 25px;
+    }
+</style>

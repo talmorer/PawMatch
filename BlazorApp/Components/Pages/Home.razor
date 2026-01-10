@@ -1,7 +1,249 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+@using DBL
+@using Models
 
-<h1>Hello, world!</h1>
+<div class="page">
+    <div class="top">
+        <h2 class="logo">🐾 PawMatch</h2>
+        <h3 class="title">Available Pets</h3>
 
-Welcome to your new app.
+        <div class="filters">
+            <select class="input" @bind="SelectedTypeID">
+                <option value="0">All Types</option>
+                @foreach (var t in types)
+                {
+                    <option value="@t.TypeID">@t.Description</option>
+                }
+            </select>
+
+            <select class="input" @bind="selectedRaceID">
+                <option value="0">All Races</option>
+                @foreach (var r in races)
+                {
+                    <option value="@r.PetRaceID">@r.Description</option>
+                }
+            </select>
+
+            <input class="input" placeholder="Search by name or city" @bind="txt" />
+
+            <button class="btn" @onclick="Search">Search</button>
+        </div>
+    </div>
+
+    <div class="grid">
+        @foreach (var p in pets)
+        {
+            <div class="card">
+                <img class="pic" src="@GetImg(p.PetPicture)" />
+
+                <div class="info">
+                    <div class="name">@p.PetName</div>
+                    <div class="meta">@p.TypeName • @p.RaceName</div>
+                    <div class="meta">Birth Year: @p.PetBirthYear</div>
+                    <div class="meta">City: @p.PetAdress</div>
+
+                    <div class="contactBox">
+                        <div class="contactTitle">Contact</div>
+                        <div class="meta">@p.UploaderFirstName @p.UploaderLastName</div>
+
+                        <a class="link" href="mailto:@p.UploaderEmail">Email: @p.UploaderEmail</a>
+                        <a class="link" href="tel:@p.UploaderPhone">Phone: @p.UploaderPhone</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    List<Pet> pets = new();
+    List<PetType> types = new();
+    List<PetRace> races = new();
+
+    int _typeID = 0;
+    int SelectedTypeID
+    {
+        get => _typeID;
+        set
+        {
+            _typeID = value;
+            _ = LoadRacesAndSearch();
+        }
+    }
+
+    int selectedRaceID = 0;
+    string txt = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        PetTypeDB tdb = new PetTypeDB();
+        types = await tdb.GetAllAsync();
+
+        await LoadRacesAndSearch();
+    }
+
+    async Task LoadRacesAndSearch()
+    {
+        if (_typeID == 0)
+        {
+            races = new();
+            selectedRaceID = 0;
+        }
+        else
+        {
+            PetRaceDB rdb = new PetRaceDB();
+            races = await rdb.GetByTypeAsync(_typeID);
+            selectedRaceID = 0;
+        }
+
+        await Search();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task Search()
+    {
+        PetsDB db = new PetsDB();
+        pets = await db.SearchAsync(_typeID, selectedRaceID, txt);
+    }
+
+    string GetImg(string pic)
+    {
+        if (string.IsNullOrEmpty(pic))
+            return "/PetPics/noimg.png";
+        return "/PetPics/" + pic;
+    }
+}
+
+<style>
+    .page {
+        min-height: 100vh;
+        background: #f8faf9;
+        padding: 30px;
+    }
+
+    .top {
+        max-width: 1100px;
+        margin: 0 auto 20px auto;
+        background: white;
+        border-radius: 20px;
+        padding: 25px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+
+    .logo {
+        color: #2e5f3e;
+        margin: 0;
+        text-align: center;
+    }
+
+    .title {
+        margin: 10px 0 20px 0;
+        text-align: center;
+        font-weight: 700;
+    }
+
+    .filters {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1.5fr 0.7fr;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .input {
+        width: 100%;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid #ccc;
+        background: white;
+    }
+
+    .btn {
+        width: 100%;
+        padding: 12px;
+        background: #2e5f3e;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+    }
+
+    .grid {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+    }
+
+    .card {
+        background: white;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+
+    .pic {
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .info {
+        padding: 16px;
+    }
+
+    .name {
+        font-size: 20px;
+        font-weight: 800;
+        margin-bottom: 6px;
+    }
+
+    .meta {
+        font-size: 14px;
+        margin: 3px 0;
+        color: #333;
+    }
+
+    .contactBox {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #eee;
+    }
+
+    .contactTitle {
+        font-weight: 800;
+        margin-bottom: 6px;
+    }
+
+    .link {
+        display: block;
+        margin: 4px 0;
+        color: #2e5f3e;
+        text-decoration: none;
+        word-break: break-word;
+    }
+
+    @@media (max-width: 1000px) {
+        .grid
+
+    {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .filters {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    }
+
+    @@media (max-width: 650px) {
+        .grid
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    }
+</style>
