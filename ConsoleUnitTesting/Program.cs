@@ -1,216 +1,275 @@
-﻿using DBL;
-using Models;
+﻿//using System;
+//using System.Collections.Generic;
+//using System.Threading.Tasks;
+//using DBL;
+//using Models;
 
-namespace ConsoleUnitTesting
-{
-    internal class Program
-    {
-        static async Task Main(string[] args)
-        {
-            //Register
-            //CustomerDB db = new CustomerDB();
-            //Customer customer = new Customer
-            //{                
-            //    FirstName = "galgalz",
-            //    LastName = "gal",
-            //    Email = "gal@gmail.com",
-            //    Phone = "0523581648",
-            //    Password = "1234"
-            //}
-            //customer = await db.InsertGetObjAsync(customer);
-            //if (customer == null)
-            //{
-            //    Console.WriteLine("failed");
-            //    return;
-            //}
+//namespace ConsoleUnitTesting
+//{
+//    internal class Program
+//    {
+//        static async Task Main(string[] args)
+//        {
+//            Console.WriteLine("=== Console DB Tests Started ===");
 
-            //Login
-            //CustomerDB db = new CustomerDB();
-            //Console.Write("Enter email: ");
-            //string email = Console.ReadLine();
-            //Console.Write("Enter password: ");
-            //string password = Console.ReadLine();
-            //Customer customer = await db.SelectByEmailAndPasswordAsync(email, password);
-            //if (customer != null)
-            //{
-            //    await Console.Out.WriteLineAsync($" Login success! Welcome {customer.FirstName} {customer.LastName}");
-            //}
-            //else
-            //{
-            //    await Console.Out.WriteLineAsync(" Login failed. Wrong email or password.");
-            //}
+//            CustomerDB udb = new CustomerDB();
+//            UserPrefsDB pdb = new UserPrefsDB();
+//            PetTypeDB tdb = new PetTypeDB();
+//            PetRaceDB rdb = new PetRaceDB();
+//            PetsDB_Test petDb = new PetsDB_Test();
 
-            ////Update & Select by Pk
-            //CustomerDB db = new CustomerDB();
-            //Customer customer = await db.SelectByPkAsync(2);
-            //if (customer == null)
-            //{
-            //    Console.WriteLine(" No user found with this ID.");
-            //    return;
-            //}
-            //Console.WriteLine($"Before update: {customer.FirstName} {customer.LastName}");
-            //customer.FirstName = "UpdatedFirst";
-            //customer.LastName = "UpdatedLast";
-            //customer.Email = "updated@gmail.com";
-            //customer.Phone = "0500000000";
-            //customer.Password = "newpass";
-            //int rows = await db.UpdateAsync(customer);
-            //if (rows > 0)
-            //{
-            //    Console.WriteLine("Update successful!");
-            //    Customer updated = await db.SelectByPkAsync(customer.UserID);
-            //    Console.WriteLine($"After update: {updated.FirstName} {updated.LastName}, Email: {updated.Email}");
-            //}
-            //else
-            //{
-            //    Console.WriteLine("Update failed (no rows affected).");
-            //}
+//            Customer u = null;
+//            UserPrefs pr = null;
+//            PetType t = null;
+//            PetRace r = null;
+//            Pet p = null;
 
-            //Select All
-            //CustomerDB db = new CustomerDB();
-            //var allUsers = await db.GetAllAsync();
-            //Console.WriteLine($"Total users found: {allUsers.Count}");
-            //foreach (var u in allUsers)
-            //{
-            //    Console.WriteLine($"ID: {u.UserID}, Name: {u.FirstName} {u.LastName}, Email: {u.Email}");
-            //}
+//            try
+//            {
+//                // -------------------------
+//                // 1) CustomerDB - InsertGetObj + SelectByPk + SelectByEmailAndPassword + Update
+//                // -------------------------
+//                Console.WriteLine("\n[1] Testing CustomerDB...");
 
-            //Delete
-            //CustomerDB db = new CustomerDB();
-            //var allUsers = await db.GetAllAsync();
-            //if (allUsers.Count > 1)
-            //{
-            //    var userToDelete = allUsers[1];
-            //    Console.WriteLine($"Deleting user ID {userToDelete.UserID} ({userToDelete.Email})...");
-            //    int rows = await db.DeleteAsync(userToDelete);
-            //    if (rows > 0)
-            //    {
-            //        Console.WriteLine("User deleted successfully!");
-            //    }
-            //    else
-            //    {
-            //        Console.WriteLine("Delete failed.");
-            //    }
-            //}
-            //else
-            //{
-            //    Console.WriteLine("Not enough users to test delete.");
-            //}
+//                string e = "test_" + Guid.NewGuid().ToString("N").Substring(0, 8) + "@mail.com";
 
-            //Select by EMAIL and PASSWORD
-            //CustomerDB db = new CustomerDB();
-            //Console.WriteLine("Testing SelectByEmailAndPasswordAsync...\n");
-            //string email = "omer.peretz@example.com";   
-            //string password = "omer258";         
-            //Customer found = await db.SelectByEmailAndPasswordAsync(email, password);
-            //if (found != null)
-            //{
-            //    Console.WriteLine($"Found user:");               
-            //    Console.WriteLine($"ID: {found.UserID}");
-            //    Console.WriteLine($"Name: {found.FirstName} {found.LastName}");
-            //    Console.WriteLine($"Email: {found.Email}");
-            //    Console.WriteLine($"Phone: {found.Phone}");
-            //    Console.WriteLine($"Admin: {found.IsAdmin}");
-            //}
-            //else
-            //{
-            //    Console.WriteLine("User not found");
-            //}
+//                u = new Customer
+//                {
+//                    FirstName = "Test",
+//                    LastName = "User",
+//                    Email = e,
+//                    Phone = "0500000000",
+//                    Password = "1234"
+//                };
 
+//                u = await udb.InsertGetObjAsync(u);
+//                if (u == null)
+//                {
+//                    Console.WriteLine("Customer InsertGetObjAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("Customer inserted: UserID=" + u.UserID + ", Email=" + u.Email);
 
-            // ----- PetTypeDB tests -----
-            PetTypeDB typeDb = new PetTypeDB();
+//                Customer u2 = await udb.SelectByPkAsync(u.UserID);
+//                if (u2 == null)
+//                {
+//                    Console.WriteLine("Customer SelectByPkAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("Customer selected by PK: UserID=" + u2.UserID);
 
-            // InsertGetObj (PetType)
-            PetType t = new PetType
-            {
-                Description = "TestType_" + Guid.NewGuid().ToString("N").Substring(0, 8)
-            };
+//                Customer u3 = await udb.SelectByEmailAndPasswordAsync(u.Email, u.Password);
+//                if (u3 == null)
+//                {
+//                    Console.WriteLine("Customer SelectByEmailAndPasswordAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("Customer login OK: UserID=" + u3.UserID);
 
-            t = await typeDb.InsertGetObjAsync(t);
-            if (t == null)
-            {
-                Console.WriteLine("PetType InsertGetObjAsync failed");
-                return;
-            }
-            Console.WriteLine($"PetType inserted: TypeID={t.TypeID}, Description={t.Description}");
+//                u2.FirstName = "Test_Updated";
+//                int ur = await udb.UpdateAsync(u2);
+//                if (ur <= 0)
+//                {
+//                    Console.WriteLine("Customer UpdateAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("Customer updated");
 
-            // SelectByPk (PetType)
-            PetType t2 = await typeDb.SelectByPkAsync(t.TypeID);
-            if (t2 == null)
-            {
-                Console.WriteLine("PetType SelectByPkAsync failed");
-                return;
-            }
-            Console.WriteLine($"PetType selected: TypeID={t2.TypeID}, Description={t2.Description}");
+//                // -------------------------
+//                // 2) UserPrefsDB - GetPrefs + SavePrefs + GetPrefs again
+//                // -------------------------
+//                Console.WriteLine("\n[2] Testing UserPrefsDB...");
 
-            // Update (PetType)
-            t2.Description = t2.Description + "_Updated";
-            int upType = await typeDb.UpdateAsync(t2);
-            if (upType <= 0)
-            {
-                Console.WriteLine("PetType UpdateAsync failed");
-                return;
-            }
-            Console.WriteLine("PetType updated");
+//                pr = await pdb.GetPrefsAsync(u.UserID);
 
-            // GetAll (PetType)
-            var allTypes = await typeDb.GetAllAsync();
-            Console.WriteLine($"PetType GetAllAsync count: {allTypes.Count}");
+//                if (pr == null)
+//                {
+//                    pr = new UserPrefs
+//                    {
+//                        UserID = u.UserID,
+//                        CanAdopt = 1,
+//                        CanUpload = 1
+//                    };
 
-            // ----- PetRaiceDB tests -----
-            PetRaceDB raiceDb = new PetRaceDB();
+//                    await pdb.SavePrefsAsync(pr);
+//                    Console.WriteLine("UserPrefs created");
+//                }
+//                else
+//                {
+//                    pr.CanAdopt = pr.CanAdopt == 1 ? 0 : 1;
+//                    pr.CanUpload = pr.CanUpload == 1 ? 0 : 1;
+//                    await pdb.SavePrefsAsync(pr);
+//                    Console.WriteLine("UserPrefs updated");
+//                }
 
-            // InsertGetObj (PetRaice)
-            PetRace r = new PetRace
-            {
-                Description = "TestRaice_" + Guid.NewGuid().ToString("N").Substring(0, 8),
-                PetTypeID = t.TypeID
-            };
+//                UserPrefs pr2 = await pdb.GetPrefsAsync(u.UserID);
+//                if (pr2 == null)
+//                {
+//                    Console.WriteLine("UserPrefs GetPrefsAsync failed after save");
+//                    return;
+//                }
+//                Console.WriteLine("UserPrefs loaded: UserID=" + pr2.UserID + ", CanAdopt=" + pr2.CanAdopt + ", CanUpload=" + pr2.CanUpload);
 
-            r = await raiceDb.InsertGetObjAsync(r);
-            if (r == null)
-            {
-                Console.WriteLine("PetRaice InsertGetObjAsync failed");
-                return;
-            }
-            Console.WriteLine($"PetRaice inserted: PetRaiceID={r.PetRaiceID}, Description={r.Description}, PetTypeID={r.PetTypeID}");
+//                // -------------------------
+//                // 3) PetTypeDB - InsertGetObj + SelectByPk + Update + GetAll
+//                // -------------------------
+//                Console.WriteLine("\n[3] Testing PetTypeDB...");
 
-            // SelectByPk (PetRaice)
-            PetRace r2 = await raiceDb.SelectByPkAsync(r.PetRaiceID);
-            if (r2 == null)
-            {
-                Console.WriteLine("PetRaice SelectByPkAsync failed");
-                return;
-            }
-            Console.WriteLine($"PetRaice selected: PetRaiceID={r2.PetRaiceID}, Description={r2.Description}, PetTypeID={r2.PetTypeID}");
+//                t = new PetType
+//                {
+//                    Description = "TestType_" + Guid.NewGuid().ToString("N").Substring(0, 8)
+//                };
 
-            // Update (PetRaice)
-            r2.Description = r2.Description + "_Updated";
-            int upRaice = await raiceDb.UpdateAsync(r2);
-            if (upRaice <= 0)
-            {
-                Console.WriteLine("PetRaice UpdateAsync failed");
-                return;
-            }
-            Console.WriteLine("PetRaice updated");
+//                t = await tdb.InsertGetObjAsync(t);
+//                if (t == null)
+//                {
+//                    Console.WriteLine("PetType InsertGetObjAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("PetType inserted: TypeID=" + t.TypeID + ", Desc=" + t.Description);
 
-            // GetAll (PetRaice)
-            var allRaices = await raiceDb.GetAllAsync();
-            Console.WriteLine($"PetRaice GetAllAsync count: {allRaices.Count}");
+//                PetType t2 = await tdb.SelectByPkAsync(t.TypeID);
+//                if (t2 == null)
+//                {
+//                    Console.WriteLine("PetType SelectByPkAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("PetType selected: TypeID=" + t2.TypeID);
 
-            // ----- Cleanup -----
-            int delRaice = await raiceDb.DeleteAsync(r2.PetRaiceID);
-            Console.WriteLine(delRaice > 0 ? "PetRaice deleted" : "PetRaice delete failed");
+//                t2.Description = t2.Description + "_Updated";
+//                int tr = await tdb.UpdateAsync(t2);
+//                if (tr <= 0)
+//                {
+//                    Console.WriteLine("PetType UpdateAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("PetType updated");
 
-            int delType = await typeDb.DeleteAsync(t2.TypeID);
-            Console.WriteLine(delType > 0 ? "PetType deleted" : "PetType delete failed");
+//                List<PetType> tl = await tdb.GetAllAsync();
+//                Console.WriteLine("PetType GetAllAsync count: " + tl.Count);
 
-            Console.WriteLine("Done");
-        }
-    }
-}
+//                // -------------------------
+//                // 4) PetRaceDB - InsertGetObj + SelectByPk + Update + GetByType + GetAll
+//                // -------------------------
+//                Console.WriteLine("\n[4] Testing PetRaceDB...");
 
+//                r = new PetRace
+//                {
+//                    Description = "TestRace_" + Guid.NewGuid().ToString("N").Substring(0, 8),
+//                    PetTypeID = t.TypeID
+//                };
 
+//                r = await rdb.InsertGetObjAsync(r);
+//                if (r == null)
+//                {
+//                    Console.WriteLine("PetRace InsertGetObjAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("PetRace inserted: PetRaceID=" + r.PetRaceID + ", Desc=" + r.Description + ", PetTypeID=" + r.PetTypeID);
 
-        
+//                PetRace r2 = await rdb.SelectByPkAsync(r.PetRaceID);
+//                if (r2 == null)
+//                {
+//                    Console.WriteLine("PetRace SelectByPkAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("PetRace selected: PetRaceID=" + r2.PetRaceID);
+
+//                r2.Description = r2.Description + "_Updated";
+//                int rr = await rdb.UpdateAsync(r2);
+//                if (rr <= 0)
+//                {
+//                    Console.WriteLine("PetRace UpdateAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("PetRace updated");
+
+//                List<PetRace> rl1 = await rdb.GetByTypeAsync(t.TypeID);
+//                Console.WriteLine("PetRace GetByTypeAsync count: " + rl1.Count);
+
+//                List<PetRace> rl2 = await rdb.GetAllAsync();
+//                Console.WriteLine("PetRace GetAllAsync count: " + rl2.Count);
+
+//                // -------------------------
+//                // 5) PetsDB - InsertGetObj + Update + GetAll + Delete (via test wrapper)
+//                // -------------------------
+//                Console.WriteLine("\n[5] Testing PetsDB...");
+
+//                p = new Pet
+//                {
+//                    PetName = "TestPet_" + Guid.NewGuid().ToString("N").Substring(0, 6),
+//                    PetAdress = "TestCity",
+//                    PetPicture = "test.jpg",
+//                    PetType = t.TypeID,
+//                    PetRaceID = r.PetRaceID,
+//                    PetBirthYear = 2020,
+//                    UpdateUserID = u.UserID,
+//                    IsActive = 1
+//                };
+
+//                p = await petDb.InsertGetObjAsync(p);
+//                if (p == null)
+//                {
+//                    Console.WriteLine("Pets InsertGetObjAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("Pet inserted: PetID=" + p.PetID + ", Name=" + p.PetName);
+
+//                p.PetName = p.PetName + "_Updated";
+//                p.PetAdress = "TestCity_Updated";
+//                p.IsActive = 1;
+
+//                int prw = await petDb.UpdateAsync(p);
+//                if (prw <= 0)
+//                {
+//                    Console.WriteLine("Pets UpdateAsync failed");
+//                    return;
+//                }
+//                Console.WriteLine("Pet updated");
+
+//                List<Pet> pl = await petDb.GetAllAsync();
+//                Console.WriteLine("Pets GetAllAsync count: " + pl.Count);
+
+//                int pd = await petDb.DeleteByIdAsync(p.PetID);
+//                if (pd <= 0)
+//                {
+//                    Console.WriteLine("Pets delete failed (FK or missing permissions)");
+//                    Console.WriteLine("Stopping cleanup to avoid breaking FK chain.");
+//                    Console.WriteLine("Done");
+//                    return;
+//                }
+//                Console.WriteLine("Pet deleted");
+
+//                // -------------------------
+//                // Cleanup: delete race then type (now that pet is deleted)
+//                // -------------------------
+//                int dr = await rdb.DeleteAsync(r.PetRaceID);
+//                Console.WriteLine(dr > 0 ? "PetRace deleted" : "PetRace delete failed");
+
+//                int dt = await tdb.DeleteAsync(t.TypeID);
+//                Console.WriteLine(dt > 0 ? "PetType deleted" : "PetType delete failed");
+
+//                // Optional: delete user (may fail if FK exists from other tables)
+//                int du = await udb.DeleteAsync(u);
+//                Console.WriteLine(du > 0 ? "Customer deleted" : "Customer delete failed (FK may exist)");
+
+//                Console.WriteLine("\n=== All Tests Finished Successfully ===");
+//            }
+//            catch (Exception ex)
+//            {
+//                Console.WriteLine("\nTest crashed:");
+//                Console.WriteLine(ex.Message);
+//            }
+//        }
+//    }
+
+//    public class PetsDB_Test : PetsDB
+//    {
+//        public async Task<int> DeleteByIdAsync(int id)
+//        {
+//            Dictionary<string, object> f = new Dictionary<string, object>();
+//            f.Add("PetID", id);
+//            return await base.DeleteAsync(f);
+//        }
+//    }
+//}
