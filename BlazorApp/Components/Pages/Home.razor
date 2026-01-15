@@ -9,7 +9,7 @@
         <h3 class="title">Available Pets</h3>
 
         <div class="filters">
-            <select class="input" @bind="SelectedTypeID">
+            <select class="pmInput" @bind="SelectedTypeID">
                 <option value="0">All Types</option>
                 @foreach (var t in types)
                 {
@@ -17,7 +17,7 @@
                 }
             </select>
 
-            <select class="input" @bind="selectedRaceID">
+            <select class="pmInput" @bind="selectedRaceID">
                 <option value="0">All Races</option>
                 @foreach (var r in races)
                 {
@@ -25,9 +25,9 @@
                 }
             </select>
 
-            <input class="input" placeholder="Search by name or city" @bind="txt" />
+            <input class="pmInput" placeholder="Search by name or city" @bind="txt" />
 
-            <button class="btn" @onclick="Search">Search</button>
+            <button class="pmBtn" @onclick="Search">Search</button>
         </div>
     </div>
 
@@ -150,22 +150,30 @@
         align-items: center;
     }
 
-    .input {
-        width: 100%;
-        padding: 12px;
+    .pmInput, .pmBtn {
+        box-sizing: border-box;
+        height: 48px;
+        font: inherit;
         border-radius: 10px;
+    }
+
+    .pmInput {
+        width: 100%;
+        padding: 0 12px;
         border: 1px solid #ccc;
         background: white;
     }
 
-    .btn {
+    .pmBtn {
         width: 100%;
-        padding: 12px;
+        padding: 0 12px;
         background: #2e5f3e;
         color: white;
-        border: none;
-        border-radius: 10px;
+        border: 1px solid transparent;
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .grid {
@@ -226,24 +234,18 @@
     }
 
     @@media (max-width: 1000px) {
-        .grid
+        .grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
 
-    {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .filters {
-        grid-template-columns: 1fr 1fr;
-    }
-
+        .filters {
+            grid-template-columns: 1fr 1fr;
+        }
     }
 
     @@media (max-width: 650px) {
-        .grid
-
-    {
-        grid-template-columns: 1fr;
-    }
-
+        .grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>

@@ -3,6 +3,7 @@
 @using Models
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @using Microsoft.AspNetCore.Components.Forms
+@inject IServiceProvider ServiceProvider
 
 <h2 class="title">Add New Pet</h2>
 
@@ -10,14 +11,9 @@
 {
     <p>Loading...</p>
 }
-else if (cu == null)
-{
-    <p>You are not logged in.</p>
-}
 else
 {
     <div class="form-container">
-
         <input class="input" placeholder="Pet Name" @bind="petName" />
         <input class="input" placeholder="Pet Address" @bind="petAddress" />
 
@@ -29,7 +25,7 @@ else
             }
         </select>
 
-        <select class="input" @bind="selectedRaceID">
+        <select class="input" @bind="selectedRaceID" disabled="@IsRaceDisabled()">
             <option value="0">Select Race</option>
             @foreach (var r in races)
             {
@@ -43,19 +39,20 @@ else
 
         <button class="btn" @onclick="AddPetToDB">Add Pet</button>
 
-        <p>@message</p>
+        <p class="msg">@message</p>
     </div>
 }
 
 @code {
-    [Inject] ProtectedSessionStorage MySession { get; set; }
-    [Inject] NavigationManager nav { get; set; }
+    ProtectedSessionStorage ses;
+    NavigationManager nav;
 
     Customer cu;
     bool loaded = false;
 
     string petName = "";
     string petAddress = "";
+
     int selectedTypeID = 0;
     int selectedRaceID = 0;
 
@@ -70,17 +67,28 @@ else
     {
         if (!firstRender) return;
 
-        var res = await MySession.GetAsync<Customer>("customer");
-        if (res.Success && res.Value != null)
-        {
-            cu = res.Value;
+        nav = (NavigationManager)ServiceProvider.GetService(typeof(NavigationManager));
+        ses = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
 
-            PetTypeDB tdb = new PetTypeDB();
-            types = await tdb.GetAllAsync();
+        var res = await ses.GetAsync<Customer>("customer");
+        if (!res.Success || res.Value == null)
+        {
+            nav.NavigateTo("/login", true);
+            return;
         }
+
+        cu = res.Value;
+
+        PetTypeDB tdb = new PetTypeDB();
+        types = await tdb.GetAllAsync();
 
         loaded = true;
         StateHasChanged();
+    }
+
+    bool IsRaceDisabled()
+    {
+        return selectedTypeID == 0 || races == null || races.Count == 0;
     }
 
     async Task TypeChanged()
@@ -117,7 +125,7 @@ else
 
             string path = Path.Combine(folder, newName);
 
-            long maxSize = 10 * 1024 * 1024; // 10MB
+            long maxSize = 5 * 1024 * 1024; // 5MB
             using var fs = new FileStream(path, FileMode.Create);
             await file.OpenReadStream(maxSize).CopyToAsync(fs);
 
@@ -133,9 +141,9 @@ else
 
     async Task AddPetToDB()
     {
-        if (cu == null)
+        if (string.IsNullOrWhiteSpace(petName) || string.IsNullOrWhiteSpace(petAddress))
         {
-            nav.NavigateTo("/login", true);
+            message = "Please fill all fields.";
             return;
         }
 
@@ -198,6 +206,7 @@ else
         margin: 10px 0;
         border-radius: 8px;
         border: 1px solid #ccc;
+        box-sizing: border-box;
     }
 
     .btn {
@@ -205,9 +214,15 @@ else
         padding: 12px;
         background: #2e5f3e;
         color: white;
-        border: none;
+        border: 1px solid transparent;
         border-radius: 8px;
         cursor: pointer;
+        margin-top: 10px;
+        font-weight: 800;
+        box-sizing: border-box;
+    }
+
+    .msg {
         margin-top: 10px;
         font-weight: 800;
     }

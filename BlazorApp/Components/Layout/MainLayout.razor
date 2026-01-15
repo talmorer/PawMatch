@@ -1,21 +1,60 @@
 ﻿@inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using Models
+@inject IServiceProvider ServiceProvider
 
 <div class="topbar">
     <div class="brand">🐾 PawMatch</div>
 
     <div class="links">
         <NavLink href="/" class="lnk" Match="NavLinkMatch.All">Home</NavLink>
-        <NavLink href="/addpet" class="lnk">Add Pet</NavLink>
-        <NavLink href="/preferences" class="lnk">Preferences</NavLink>
-        <NavLink href="/myaccount" class="lnk">My Account</NavLink>
-        <NavLink href="/login" class="lnk">Login</NavLink>
+
+        @if (ready)
+        {
+            @if (logged)
+            {
+                <NavLink href="/addpet" class="lnk">Add Pet</NavLink>
+                <NavLink href="/preferences" class="lnk">Preferences</NavLink>
+                <NavLink href="/myaccount" class="lnk">My Account</NavLink>
+
+                @if (isAdmin)
+                {
+                    <NavLink href="/admin" class="lnk">Admin</NavLink>
+                }
+            }
+            else
+            {
+                <NavLink href="/login" class="lnk">Login</NavLink>
+                <NavLink href="/register" class="lnk">Register</NavLink>
+            }
+        }
     </div>
 </div>
 
 <div class="body">
     @Body
 </div>
+
+@code {
+    bool ready = false;
+    bool logged = false;
+    bool isAdmin = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var ses = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
+        var res = await ses.GetAsync<Customer>("customer");
+
+        logged = res.Success && res.Value != null;
+        isAdmin = logged && res.Value.IsAdmin;
+
+        ready = true;
+        StateHasChanged();
+    }
+}
 
 <style>
     .topbar {

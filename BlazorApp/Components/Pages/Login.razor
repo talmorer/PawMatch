@@ -2,127 +2,122 @@
 @using DBL
 @using Models
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-@inject IServiceProvider ServiceProvider
+
+@inject ProtectedSessionStorage MySession
+@inject NavigationManager Nav
 
 <div class="login-container">
-    <div class="card">
+    <div class="login-card">
         <h2 class="logo">🐾 PawMatch</h2>
-        <h3>Login</h3>
+        <h3 class="title">Login</h3>
 
-        <input type="text" @bind="loginData.Email" placeholder="Email" class="input" />
-        <input type="password" @bind="loginData.Password" placeholder="Password" class="input" />
-        <button class="btn" @onclick="CheckLogin">Login</button>
+        <input type="text" class="inp" @bind="loginData.Email" placeholder="Email" />
+        <input type="password" class="inp" @bind="loginData.Password" placeholder="Password" />
+
+        <button class="login-btn" @onclick="CheckLogin">Login</button>
 
         <p class="switch-text">
-            Don't have an account? <a href="/register">Register</a>
+            Don't have an account? <a class="switch-link" href="/register">Register</a>
         </p>
 
-        <p class="error">@message</p>
+        <p class="msg">@message</p>
     </div>
 </div>
 
 @code {
     CustomerDB db = new CustomerDB();
-    ProtectedSessionStorage MySession;
-    NavigationManager nav;
     LoginData loginData = new LoginData();
     string message = "";
 
-    // initialize services manually
-    protected override void OnInitialized()
+    async Task CheckLogin()
     {
-        nav = (NavigationManager)ServiceProvider.GetService(typeof(NavigationManager));
-        MySession = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
-    }
-
-    private async Task CheckLogin()
-    {
-        if (string.IsNullOrWhiteSpace(loginData.Email) || string.IsNullOrWhiteSpace(loginData.Password))
-        {
-            message = "Please enter both email and password.";
-            return;
-        }
-
         Customer found = await db.SelectByEmailAndPasswordAsync(loginData.Email, loginData.Password);
 
         if (found != null)
         {
             await MySession.SetAsync("customer", found);
-            message = $"✅ Welcome back, {found.FirstName}!";
-            await Task.Delay(1000);
-            nav.NavigateTo("/myaccount");
+            Nav.NavigateTo("/myaccount");
         }
         else
         {
             message = "❌ Email or password incorrect.";
         }
     }
-}
 
-public class LoginData
-{
-    public string Email { get; set; }
-    public string Password { get; set; }
+    class LoginData
+    {
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
 }
 
 <style>
     .login-container {
+        min-height: 100vh;
         display: flex;
         justify-content: center;
-        align-items: center;
-        height: 100vh;
+        align-items: flex-start;
         background: #f8faf9;
+        padding-top: 120px;
+        padding-bottom: 40px;
     }
 
-    .card {
+
+    .login-card {
         background: white;
         padding: 40px;
         border-radius: 20px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        width: 320px;
+        width: 340px;
         text-align: center;
     }
 
     .logo {
         color: #2e5f3e;
-        margin-bottom: 20px;
+        margin: 0 0 14px 0;
     }
 
-    .input {
+    .title {
+        margin: 0 0 18px 0;
+        font-weight: 800;
+    }
+
+    .inp {
         width: 100%;
-        padding: 10px;
+        box-sizing: border-box;
+        padding: 12px;
         margin: 8px 0;
         border: 1px solid #ccc;
-        border-radius: 8px;
+        border-radius: 10px;
+        font: inherit;
     }
 
-    .btn {
+    .login-btn {
         width: 100%;
-        background-color: #2e5f3e;
+        box-sizing: border-box;
+        padding: 12px;
+        border-radius: 10px;
+        background: #2e5f3e;
         color: white;
-        padding: 10px;
-        border: none;
-        border-radius: 8px;
+        border: 1px solid transparent;
         cursor: pointer;
         margin-top: 10px;
+        font: inherit;
     }
-
-        .btn:hover {
-            background-color: #3b724a;
-        }
 
     .switch-text {
-        margin-top: 15px;
+        margin-top: 16px;
     }
 
-        .switch-text a {
-            color: #2e5f3e;
-            text-decoration: none;
-            font-weight: bold;
-        }
+    .switch-link {
+        color: #2e5f3e;
+        text-decoration: none;
+        font-weight: 800;
+    }
 
-    .error {
-        color: red;
-        margin-top: 10px;
+    .msg {
+        margin-top: 12px;
+        color: #c0392b;
+        min-height: 20px;
     }
 </style>

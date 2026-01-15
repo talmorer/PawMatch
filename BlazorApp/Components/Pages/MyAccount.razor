@@ -2,68 +2,64 @@
 @using DBL
 @using Models
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-@inject ProtectedSessionStorage MySession
-@inject NavigationManager nav
+@inject IServiceProvider ServiceProvider
 
 <div class="account-container">
-    @if (user == null)
-    {
-        <div class="card">
-            <p class="error">❌ You are not logged in.</p>
-            <button class="btn" @onclick="@(() => nav.NavigateTo("/login"))">Go to Login</button>
-        </div>
-    }
-    else
-    {
-        <div class="card">
-            <h2 class="logo">🐾 PawMatch</h2>
-            <h3>Welcome, @user.FirstName!</h3>
+    <div class="card">
+        <h2 class="logo">🐾 PawMatch</h2>
+        <h3>Welcome, @user.FirstName!</h3>
 
-            @if (!isEditing)
+        @if (!isEditing)
+        {
+            <p><b>First Name:</b> @user.FirstName</p>
+            <p><b>Last Name:</b> @user.LastName</p>
+            <p><b>Email:</b> @user.Email</p>
+            <p><b>Phone:</b> @user.Phone</p>
+
+            <button class="btn" @onclick="() => isEditing = true">Edit Details</button>
+            <button class="btn gray" @onclick="Logout">Logout</button>
+
+            @if (user.IsAdmin)
             {
-                <p><b>First Name:</b> @user.FirstName</p>
-                <p><b>Last Name:</b> @user.LastName</p>
-                <p><b>Email:</b> @user.Email</p>
-                <p><b>Phone:</b> @user.Phone</p>
-
-                <button class="btn" @onclick="() => isEditing = true">Edit Details</button>
-                <button class="btn gray" @onclick="Logout">Logout</button>
-
-                @if (user.IsAdmin)
-                {
-                    <button class="btn blue" @onclick="@(() => nav.NavigateTo("/admin"))">Go to Admin Panel</button>
-                }
+                <button class="btn blue" @onclick="GoAdmin">Go to Admin Panel</button>
             }
-            else   @*  *@
-            {
-                <input class="input" @bind="user.FirstName" placeholder="First name" />
-                <input class="input" @bind="user.LastName" placeholder="Last name" />
-                <input class="input" @bind="user.Phone" placeholder="Phone" />
-                <input class="input" type="password" @bind="user.Password" placeholder="Password" />
+        }
+        else
+        {
+            <input class="input" @bind="user.FirstName" placeholder="First name" />
+            <input class="input" @bind="user.LastName" placeholder="Last name" />
+            <input class="input" @bind="user.Phone" placeholder="Phone" />
+            <input class="input" type="password" @bind="user.Password" placeholder="Password" />
 
-                <button class="btn" @onclick="UpdateUser">Save</button>
-                <button class="btn gray" @onclick="CancelEdit">Cancel</button>
-            }
-        </div>
-    }
+            <button class="btn" @onclick="UpdateUser">Save</button>
+            <button class="btn gray" @onclick="CancelEdit">Cancel</button>
+        }
+    </div>
 </div>
 
 @code {
     Customer user;
     bool isEditing = false;
 
+    ProtectedSessionStorage ses;
+    NavigationManager nav;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender) return;
+
+        nav = (NavigationManager)ServiceProvider.GetService(typeof(NavigationManager));
+        ses = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
+
+        var res = await ses.GetAsync<Customer>("customer");
+        if (!res.Success || res.Value == null)
         {
-            var result = await MySession.GetAsync<Customer>("customer");
-            if (result.Success)
-            {
-                user = result.Value;
-                StateHasChanged();
-            }
-            else nav.NavigateTo("/login");
+            nav.NavigateTo("/login", true);
+            return;
         }
+
+        user = res.Value;
+        StateHasChanged();
     }
 
     async Task UpdateUser()
@@ -77,16 +73,20 @@
 
     async Task Logout()
     {
-        await MySession.DeleteAsync("customer");
-        nav.NavigateTo("/login");
+        await ses.DeleteAsync("customer");
+        nav.NavigateTo("/login", true);
     }
+
+    void GoAdmin() => nav.NavigateTo("/admin", true);
 }
+
 <style>
     .account-container {
         display: flex;
         justify-content: center;
-        align-items: center;
-        height: 100vh;
+        align-items: flex-start;
+        min-height: calc(100vh - 60px);
+        padding-top: 30px;
         background: #f8faf9;
     }
 
@@ -110,6 +110,7 @@
         margin: 8px 0;
         border: 1px solid #ccc;
         border-radius: 8px;
+        box-sizing: border-box;
     }
 
     .btn {
@@ -117,15 +118,12 @@
         background-color: #2e5f3e;
         color: white;
         padding: 10px;
-        border: none;
+        border: 1px solid transparent;
         border-radius: 8px;
         cursor: pointer;
         margin-top: 10px;
+        box-sizing: border-box;
     }
-
-        .btn:hover {
-            background-color: #3b724a;
-        }
 
         .btn.gray {
             background-color: #777;
@@ -134,14 +132,4 @@
         .btn.blue {
             background-color: #2e7d9f;
         }
-
-    .success {
-        color: green;
-        margin-top: 10px;
-    }
-
-    .error {
-        color: red;
-        margin-top: 10px;
-    }
 </style>
