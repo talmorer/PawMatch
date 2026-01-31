@@ -15,8 +15,8 @@ else
 {
     <div class="form-container">
 
-        <input class="input" placeholder="Pet Name" @bind="petName" />
-        <input class="input" placeholder="Pet Address" @bind="petAddress" />
+        <input class="input" placeholder="Pet Name" @bind="petName" disabled="@working" />
+        <input class="input" placeholder="Pet Address" @bind="petAddress" disabled="@working" />
 
         <select class="input" value="@selectedTypeID" @onchange="OnTypeChange" disabled="@working">
             <option value="0">Select Type</option>
@@ -26,7 +26,7 @@ else
             }
         </select>
 
-        <select class="input" @bind="selectedRaceID" disabled="@IsRaceDisabled() || working">
+        <select class="input" @bind="selectedRaceID" disabled="@(selectedTypeID == 0 || working)">
             <option value="0">Select Race</option>
             @foreach (var r in races)
             {
@@ -43,7 +43,9 @@ else
                 @foreach (var tr in traits)
                 {
                     <label class="trItem">
-                        <input type="checkbox" checked="@selTraits.Contains(tr.TraitID)" disabled="@working"
+                        <input type="checkbox"
+                               checked="@selTraits.Contains(tr.TraitID)"
+                               disabled="@working"
                                @onchange="(e) => ToggleTrait(tr.TraitID, e)" />
                         <span>@tr.TraitName</span>
                     </label>
@@ -74,18 +76,16 @@ else
 
     Customer cu;
     bool loaded = false;
+    bool working = false;
 
     string petName = "";
     string petAddress = "";
-
     int selectedTypeID = 0;
     int selectedRaceID = 0;
 
     string birthYearText = "";
     string fileName = "";
     string message = "";
-
-    bool working = false;
 
     List<PetType> types = new();
     List<PetRace> races = new();
@@ -119,13 +119,6 @@ else
         StateHasChanged();
     }
 
-    bool IsRaceDisabled()
-    {
-        if (selectedTypeID == 0) return true;
-        if (races == null) return true;
-        return races.Count == 0;
-    }
-
     async Task OnTypeChange(ChangeEventArgs e)
     {
         if (working) return;
@@ -141,8 +134,7 @@ else
 
         await InvokeAsync(StateHasChanged);
 
-        if (selectedTypeID == 0)
-            return;
+        if (selectedTypeID == 0) return;
 
         PetRaceDB rdb = new PetRaceDB();
         races = await rdb.GetByTypeAsync(selectedTypeID);
@@ -159,7 +151,11 @@ else
             if (e.Value is bool)
                 v = (bool)e.Value;
             else
-                v = e.Value.ToString() == "true";
+            {
+                string s = e.Value.ToString();
+                if (s == "true" || s == "True" || s == "on" || s == "On")
+                    v = true;
+            }
         }
 
         if (v)
@@ -282,14 +278,15 @@ else
 
             PetsTraitsDB ptDb = new PetsTraitsDB();
             await ptDb.DeleteByPetAsync(ins.PetID);
+
             foreach (int tid in selTraits)
                 await ptDb.InsertAsync(ins.PetID, tid);
 
-            message = "Pet added successfully!";
-            await InvokeAsync(StateHasChanged);
-
-            await Task.Delay(600);
-            nav.NavigateTo("/", true);
+            message = "Saved.";
+        }
+        catch (Exception ex)
+        {
+            message = "Save failed: " + ex.Message;
         }
         finally
         {
@@ -322,7 +319,6 @@ else
         border-radius: 8px;
         border: 1px solid #ccc;
         box-sizing: border-box;
-        font: inherit;
     }
 
     .btn {
@@ -336,7 +332,6 @@ else
         margin-top: 10px;
         font-weight: 800;
         box-sizing: border-box;
-        font: inherit;
     }
 
         .btn:disabled {
