@@ -2,19 +2,17 @@
 @using DBL
 @using Models
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-
-@inject ProtectedSessionStorage MySession
-@inject NavigationManager Nav
+@inject IServiceProvider ServiceProvider
 
 <div class="login-container">
-    <div class="login-card">
+    <div class="card">
         <h2 class="logo">🐾 PawMatch</h2>
         <h3 class="title">Login</h3>
 
-        <input type="text" class="inp" @bind="loginData.Email" placeholder="Email" />
-        <input type="password" class="inp" @bind="loginData.Password" placeholder="Password" />
+        <input type="text" class="input" placeholder="Email" @bind="email" />
+        <input type="password" class="input" placeholder="Password" @bind="pass" />
 
-        <button class="login-btn" @onclick="CheckLogin">Login</button>
+        <button class="btn" @onclick="CheckLogin">Login</button>
 
         <p class="switch-text">
             Don't have an account? <a class="switch-link" href="/register">Register</a>
@@ -26,55 +24,65 @@
 
 @code {
     CustomerDB db = new CustomerDB();
-    LoginData loginData = new LoginData();
+
+    ProtectedSessionStorage ses;
+    NavigationManager nav;
+
+    string email = "";
+    string pass = "";
     string message = "";
+
+    protected override void OnInitialized()
+    {
+        nav = (NavigationManager)ServiceProvider.GetService(typeof(NavigationManager));
+        ses = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
+    }
 
     async Task CheckLogin()
     {
-        Customer found = await db.SelectByEmailAndPasswordAsync(loginData.Email, loginData.Password);
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(pass))
+        {
+            message = "Please enter both email and password.";
+            return;
+        }
+
+        Customer found = await db.SelectByEmailAndPasswordAsync(email, pass);
 
         if (found != null)
         {
-            await MySession.SetAsync("customer", found);
-            Nav.NavigateTo("/myaccount");
+            await ses.SetAsync("customer", found);
+            nav.NavigateTo("/myaccount", true);
         }
         else
         {
-            message = "❌ Email or password incorrect.";
+            message = "Email or password incorrect.";
         }
-    }
-
-    class LoginData
-    {
-        public string Email { get; set; } = "";
-        public string Password { get; set; } = "";
     }
 }
 
 <style>
     .login-container {
-        min-height: 100vh;
         display: flex;
         justify-content: center;
         align-items: flex-start;
+        min-height: calc(100vh - 60px);
         background: #f8faf9;
-        padding-top: 120px;
+        padding-top: 60px;
         padding-bottom: 40px;
     }
 
-
-    .login-card {
+    .card {
         background: white;
         padding: 40px;
         border-radius: 20px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        width: 340px;
+        width: 320px;
         text-align: center;
     }
 
     .logo {
         color: #2e5f3e;
-        margin: 0 0 14px 0;
+        margin-bottom: 16px;
     }
 
     .title {
@@ -82,42 +90,43 @@
         font-weight: 800;
     }
 
-    .inp {
+    .input {
         width: 100%;
-        box-sizing: border-box;
-        padding: 12px;
+        padding: 10px;
         margin: 8px 0;
         border: 1px solid #ccc;
-        border-radius: 10px;
+        border-radius: 8px;
+        box-sizing: border-box;
         font: inherit;
     }
 
-    .login-btn {
+    .btn {
         width: 100%;
-        box-sizing: border-box;
-        padding: 12px;
-        border-radius: 10px;
-        background: #2e5f3e;
+        background-color: #2e5f3e;
         color: white;
+        padding: 10px;
         border: 1px solid transparent;
+        border-radius: 8px;
         cursor: pointer;
         margin-top: 10px;
+        box-sizing: border-box;
         font: inherit;
     }
 
     .switch-text {
-        margin-top: 16px;
+        margin-top: 15px;
     }
 
     .switch-link {
         color: #2e5f3e;
         text-decoration: none;
-        font-weight: 800;
+        font-weight: bold;
     }
 
     .msg {
         margin-top: 12px;
         color: #c0392b;
         min-height: 20px;
+        font-weight: 700;
     }
 </style>

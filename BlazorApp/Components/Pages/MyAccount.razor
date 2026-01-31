@@ -5,36 +5,39 @@
 @inject IServiceProvider ServiceProvider
 
 <div class="account-container">
-    <div class="card">
-        <h2 class="logo">🐾 PawMatch</h2>
-        <h3>Welcome, @user.FirstName!</h3>
+    @if (user != null)
+    {
+        <div class="card">
+            <h2 class="logo">🐾 PawMatch</h2>
+            <h3>Welcome, @user.FirstName!</h3>
 
-        @if (!isEditing)
-        {
-            <p><b>First Name:</b> @user.FirstName</p>
-            <p><b>Last Name:</b> @user.LastName</p>
-            <p><b>Email:</b> @user.Email</p>
-            <p><b>Phone:</b> @user.Phone</p>
-
-            <button class="btn" @onclick="() => isEditing = true">Edit Details</button>
-            <button class="btn gray" @onclick="Logout">Logout</button>
-
-            @if (user.IsAdmin)
+            @if (!isEditing)
             {
-                <button class="btn blue" @onclick="GoAdmin">Go to Admin Panel</button>
-            }
-        }
-        else
-        {
-            <input class="input" @bind="user.FirstName" placeholder="First name" />
-            <input class="input" @bind="user.LastName" placeholder="Last name" />
-            <input class="input" @bind="user.Phone" placeholder="Phone" />
-            <input class="input" type="password" @bind="user.Password" placeholder="Password" />
+                <p><b>First Name:</b> @user.FirstName</p>
+                <p><b>Last Name:</b> @user.LastName</p>
+                <p><b>Email:</b> @user.Email</p>
+                <p><b>Phone:</b> @user.Phone</p>
 
-            <button class="btn" @onclick="UpdateUser">Save</button>
-            <button class="btn gray" @onclick="CancelEdit">Cancel</button>
-        }
-    </div>
+                <button class="btn" @onclick="StartEdit">Edit Details</button>
+                <button class="btn gray" @onclick="Logout">Logout</button>
+
+                @if (user.IsAdmin)
+                {
+                    <button class="btn blue" @onclick="GoAdmin">Go to Admin Panel</button>
+                }
+            }
+            else
+            {
+                <input class="input" @bind="user.FirstName" placeholder="First name" />
+                <input class="input" @bind="user.LastName" placeholder="Last name" />
+                <input class="input" @bind="user.Phone" placeholder="Phone" />
+                <input class="input" type="password" @bind="user.Password" placeholder="Password" />
+
+                <button class="btn" @onclick="UpdateUser">Save</button>
+                <button class="btn gray" @onclick="CancelEdit">Cancel</button>
+            }
+        </div>
+    }
 </div>
 
 @code {
@@ -61,6 +64,8 @@
         user = res.Value;
         StateHasChanged();
     }
+
+    void StartEdit() => isEditing = true;
 
     async Task UpdateUser()
     {
