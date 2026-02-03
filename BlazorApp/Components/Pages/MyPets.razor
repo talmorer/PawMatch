@@ -1,0 +1,457 @@
+﻿@page "/mypets"
+@using DBL
+@using Models
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using Microsoft.AspNetCore.Components.Forms
+@inject IServiceProvider ServiceProvider
+
+<div class="wrap">
+    <div class="head">
+        <div class="h1">My Pets</div>
+        <button class="btn" @onclick="Reload" disabled="@busy">Refresh</button>
+    </div>
+
+    @if (!loaded)
+    {
+        <div class="loading">Loading...</div>
+    }
+    else
+    {
+        <div class="grid">
+            @foreach (var p in myPets)
+            {
+                <div class="card">
+                    <img class="pic" src="@GetImg(p.PetPicture)" />
+
+                    <div class="row">
+                        <div class="name">@p.PetName</div>
+                        <div class="badge @(p.IsActive == 1 ? "on" : "off")">@((p.IsActive == 1) ? "Visible" : "Hidden")</div>
+                    </div>
+
+                    <div class="meta">City: @p.PetAdress</div>
+                    <div class="meta">Birth Year: @p.PetBirthYear</div>
+
+                    <div class="btnRow">
+                        <button class="btn gray" @onclick="() => ToggleActive(p)" disabled="@busy">
+                            @((p.IsActive == 1) ? "Hide" : "Show")
+                        </button>
+
+                        <button class="btn" @onclick="() => StartEdit(p)" disabled="@busy">Edit</button>
+                    </div>
+
+                    @if (editId == p.PetID)
+                    {
+                        <div class="editBox">
+                            <div class="secTitle">Edit Details</div>
+
+                            <input class="input" placeholder="Pet Name" @bind="eName" disabled="@busy" />
+                            <input class="input" placeholder="City" @bind="eAddr" disabled="@busy" />
+                            <input class="input" placeholder="Birth Year" @bind="eYear" disabled="@busy" />
+
+                            <select class="input" value="@eType" @onchange="OnEditTypeChange" disabled="@busy">
+                                <option value="0">Select Type</option>
+                                @foreach (var t in types)
+                                {
+                                    <option value="@t.TypeID">@t.Description</option>
+                                }
+                            </select>
+
+                            <select class="input" @bind="eRace" disabled="@(eType == 0 || editRaces.Count == 0 || busy)">
+                                <option value="0">Select Race</option>
+                                @foreach (var r in editRaces)
+                                {
+                                    <option value="@r.PetRaceID">@r.Description</option>
+                                }
+                            </select>
+
+                            <div class="traitsBox">
+                                <div class="traitsTitle">Traits</div>
+                                <div class="traitsGrid">
+                                    @foreach (var tr in traits)
+                                    {
+                                        <label class="trItem">
+                                            <input type="checkbox"
+                                                   checked="@eTraits.Contains(tr.TraitID)"
+                                                   disabled="@busy"
+                                                   @onchange="(x) => ToggleEditTrait(tr.TraitID, x)" />
+                                            <span>@tr.TraitName</span>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="picBox">
+                                <div class="picTitle">Change Picture (optional)</div>
+
+                                @if (!string.IsNullOrEmpty(ePic))
+                                {
+                                    <img class="prev" src="@GetImg(ePic)" />
+                                }
+
+                                <InputFile class="input" OnChange="HandleEditFile" disabled="@busy" />
+                            </div>
+
+                            <div class="btnRow">
+                                <button class="btn" @onclick="SaveEdit" disabled="@busy">Save</button>
+                                <button class="btn gray" @onclick="CancelEdit" disabled="@busy">Cancel</button>
+                            </div>
+
+                            <div class="msg">@msg</div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    ProtectedSessionStorage ses;
+    NavigationManager nav;
+
+    bool loaded = false;
+    bool busy = false;
+
+    Customer cu;
+
+    List<Pet> myPets = new();
+
+    List<PetType> types = new();
+    List<PetRace> editRaces = new();
+
+    List<Trait> traits = new();
+
+    int editId = 0;
+
+    string eName = "";
+    string eAddr = "";
+    string eYear = "";
+    int eType = 0;
+    int eRace = 0;
+    string ePic = "";
+    List<int> eTraits = new();
+
+    string msg = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        nav = (NavigationManager)ServiceProvider.GetService(typeof(NavigationManager));
+        ses = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
+
+        var res = await ses.GetAsync<Customer>("customer");
+        if (!res.Success || res.Value == null)
+        {
+            nav.NavigateTo("/login", true);
+            return;
+        }
+
+        cu = res.Value;
+
+        PetTypeDB tdb = new PetTypeDB();
+        types = await tdb.GetAllAsync();
+
+        PetTraitsDB trdb = new PetTraitsDB();
+        traits = await trdb.GetAllAsync();
+
+        await LoadMyPets();
+
+        loaded = true;
+        StateHasChanged();
+    }
+
+    async Task LoadMyPets()
+    {
+        PetsDB pdb = new PetsDB();
+        myPets = await pdb.GetByUserAsync(cu.UserID);
+    }
+
+    async Task Reload()
+    {
+        if (busy) return;
+        msg = "";
+        editId = 0;
+        await LoadMyPets();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void StartEdit(Pet p)
+    {
+        msg = "";
+        editId = p.PetID;
+
+        eName = p.PetName ?? "";
+        eAddr = p.PetAdress ?? "";
+        eYear = p.PetBirthYear.ToString();
+        eType = p.PetType;
+        eRace = p.PetRaceID;
+        ePic = p.PetPicture ?? "";
+        eTraits = new List<int>();
+
+        _ = LoadEditRacesAndTraits(p.PetID);
+    }
+
+    async Task LoadEditRacesAndTraits(int petId)
+    {
+        editRaces = new();
+
+        if (eType != 0)
+        {
+            PetRaceDB rdb = new PetRaceDB();
+            editRaces = await rdb.GetByTypeAsync(eType);
+        }
+
+        PetsTraitsDB pt = new PetsTraitsDB();
+        var list = await pt.GetByPetAsync(petId);
+
+        eTraits = new List<int>();
+        foreach (var x in list)
+            eTraits.Add(x.TraitID);
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task OnEditTypeChange(ChangeEventArgs e)
+    {
+        if (busy) return;
+
+        int v = 0;
+        if (e != null && e.Value != null)
+            int.TryParse(e.Value.ToString(), out v);
+
+        eType = v;
+        eRace = 0;
+        editRaces = new();
+
+        await InvokeAsync(StateHasChanged);
+
+        if (eType == 0) return;
+
+        PetRaceDB rdb = new PetRaceDB();
+        editRaces = await rdb.GetByTypeAsync(eType);
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void ToggleEditTrait(int id, ChangeEventArgs e)
+    {
+        bool v = false;
+
+        if (e != null && e.Value != null)
+        {
+            if (e.Value is bool)
+                v = (bool)e.Value;
+            else
+            {
+                string s = e.Value.ToString();
+                if (s == "true" || s == "True" || s == "on" || s == "On")
+                    v = true;
+            }
+        }
+
+        if (v)
+        {
+            if (!eTraits.Contains(id))
+                eTraits.Add(id);
+        }
+        else
+        {
+            eTraits.Remove(id);
+        }
+    }
+
+    async Task HandleEditFile(InputFileChangeEventArgs e)
+    {
+        if (busy) return;
+
+        try
+        {
+            busy = true;
+            msg = "Uploading...";
+            await InvokeAsync(StateHasChanged);
+
+            var file = e.File;
+            if (file == null)
+            {
+                msg = "";
+                return;
+            }
+
+            string ext = Path.GetExtension(file.Name);
+            string newName = Guid.NewGuid().ToString() + ext;
+
+            string folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "PetPics");
+            Directory.CreateDirectory(folder);
+
+            string path = Path.Combine(folder, newName);
+
+            long maxSize = 5 * 1024 * 1024;
+            using var fs = new FileStream(path, FileMode.Create);
+            await file.OpenReadStream(maxSize).CopyToAsync(fs);
+
+            ePic = newName;
+            msg = "Picture selected.";
+        }
+        catch (Exception ex)
+        {
+            msg = "Upload failed: " + ex.Message;
+        }
+        finally
+        {
+            busy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    async Task SaveEdit()
+    {
+        if (busy) return;
+
+        try
+        {
+            busy = true;
+            msg = "Saving...";
+            await InvokeAsync(StateHasChanged);
+
+            if (editId == 0) return;
+
+            if (string.IsNullOrWhiteSpace(eName) || string.IsNullOrWhiteSpace(eAddr))
+            {
+                msg = "Fill name and city.";
+                return;
+            }
+
+            if (eType == 0 || eRace == 0)
+            {
+                msg = "Select type and race.";
+                return;
+            }
+
+            if (!int.TryParse(eYear, out int y))
+            {
+                msg = "Birth year must be a number.";
+                return;
+            }
+
+            Pet p = null;
+            foreach (var x in myPets)
+                if (x.PetID == editId) p = x;
+
+            if (p == null)
+            {
+                msg = "Pet not found.";
+                return;
+            }
+
+            p.PetName = eName;
+            p.PetAdress = eAddr;
+            p.PetType = eType;
+            p.PetRaceID = eRace;
+            p.PetBirthYear = y;
+            if (!string.IsNullOrWhiteSpace(ePic))
+                p.PetPicture = ePic;
+
+            PetsDB pdb = new PetsDB();
+            await pdb.UpdatePetAsync(p);
+
+            PetsTraitsDB pt = new PetsTraitsDB();
+            await pt.DeleteByPetAsync(p.PetID);
+            foreach (int tid in eTraits)
+                await pt.InsertAsync(p.PetID, tid);
+
+            msg = "Saved.";
+            editId = 0;
+
+            await LoadMyPets();
+        }
+        catch (Exception ex)
+        {
+            msg = "Save failed: " + ex.Message;
+        }
+        finally
+        {
+            busy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    void CancelEdit()
+    {
+        msg = "";
+        editId = 0;
+    }
+
+    async Task ToggleActive(Pet p)
+    {
+        if (busy) return;
+
+        try
+        {
+            busy = true;
+            msg = "";
+            await InvokeAsync(StateHasChanged);
+
+            int newVal = (p.IsActive == 1) ? 0 : 1;
+
+            PetsDB db = new PetsDB();
+            await db.SetActiveAsync(p.PetID, newVal);
+
+            p.IsActive = newVal;
+        }
+        finally
+        {
+            busy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    string GetImg(string pic)
+    {
+        if (string.IsNullOrEmpty(pic))
+            return "/PetPics/noimg.png";
+        return "/PetPics/" + pic.Trim();
+    }
+}
+
+<style>
+    .wrap { max-width: 1150px; margin: 0 auto; padding: 20px; }
+    .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .h1 { font-size: 26px; font-weight: 900; color: #2e5f3e; }
+    .loading { padding: 30px; font-weight: 800; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .card { background: white; border-radius: 18px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+    .pic { width: 100%; height: 200px; object-fit: cover; display: block; }
+
+    .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 0 14px; }
+    .name { font-size: 18px; font-weight: 900; }
+    .badge { font-weight: 900; font-size: 12px; padding: 6px 10px; border-radius: 999px; }
+    .badge.on { background: #e7f4ec; color: #2e5f3e; border: 1px solid #cfe8d7; }
+    .badge.off { background: #f3f3f3; color: #666; border: 1px solid #e6e6e6; }
+
+    .meta { padding: 4px 14px; font-size: 13px; color: #333; }
+
+    .btnRow { display: flex; gap: 10px; padding: 12px 14px 14px 14px; }
+    .btn { flex: 1; padding: 10px; border-radius: 10px; border: none; cursor: pointer; font-weight: 900; background: #2e5f3e; color: white; }
+    .btn.gray { background: #777; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .editBox { padding: 14px; border-top: 1px solid #eee; background: #fbfbfb; }
+    .secTitle { font-weight: 900; margin-bottom: 10px; color: #2e5f3e; }
+    .input { width: 100%; padding: 11px; margin: 8px 0; border-radius: 10px; border: 1px solid #ccc; box-sizing: border-box; }
+
+    .traitsBox { margin-top: 8px; padding: 12px; border: 1px solid #e9e9e9; border-radius: 14px; background: white; }
+    .traitsTitle { font-weight: 900; margin-bottom: 10px; color: #2e5f3e; }
+    .traitsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .trItem { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; border: 1px solid #eee; background: #fff; font-weight: 800; }
+
+    .picBox { margin-top: 10px; padding: 12px; border: 1px solid #e9e9e9; border-radius: 14px; background: white; }
+    .picTitle { font-weight: 900; margin-bottom: 10px; color: #2e5f3e; }
+    .prev { width: 100%; height: 180px; object-fit: cover; border-radius: 12px; border: 1px solid #eee; margin-bottom: 8px; display: block; }
+
+    .msg { margin-top: 10px; font-weight: 900; min-height: 18px; }
+
+    @@media (max-width: 1000px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @@media (max-width: 650px) { .grid { grid-template-columns: 1fr; } .traitsGrid { grid-template-columns: 1fr; } }
+</style>

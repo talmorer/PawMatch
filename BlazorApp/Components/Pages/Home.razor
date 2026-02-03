@@ -91,9 +91,6 @@
         PetTraitsDB trdb = new PetTraitsDB();
         allTraits = await trdb.GetAllAsync();
 
-        PetsTraitsDB ptrdb = new PetsTraitsDB();
-        allPetTraits = await ptrdb.GetAllAsync();
-
         await LoadRacesAndSearch();
     }
 
@@ -120,7 +117,11 @@
         PetsDB db = new PetsDB();
         pets = await db.SearchAsync(_typeID, selectedRaceID, txt);
 
+        PetsTraitsDB ptrdb = new PetsTraitsDB();
+        allPetTraits = await ptrdb.GetAllAsync();
+
         BuildTraitsText();
+        await InvokeAsync(StateHasChanged);
     }
 
     void BuildTraitsText()

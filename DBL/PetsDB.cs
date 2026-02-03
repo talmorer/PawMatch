@@ -124,6 +124,42 @@ WHERE p.IsActive = 1
         {
             return await SearchAsync(0, 0, "");
         }
+        public async Task<List<Pet>> GetByUserAsync(int userId)
+        {
+            string sql = "SELECT * FROM pets WHERE UpdateUserID=@uid";
+            Dictionary<string, object> p = new Dictionary<string, object>();
+            p.Add("uid", userId);
+            return await SelectAllAsync(sql, p);
+        }
+
+        public async Task<int> UpdatePetAsync(Pet pet)
+        {
+            Dictionary<string, object> f = new Dictionary<string, object>();
+            f.Add("PetName", pet.PetName);
+            f.Add("PetAddress", pet.PetAdress);
+            f.Add("PetType", pet.PetType);
+            f.Add("PetRaceID", pet.PetRaceID);
+            f.Add("PetBirthYear", pet.PetBirthYear);
+            f.Add("PetPicture", pet.PetPicture);
+            f.Add("IsActive", pet.IsActive);
+
+            Dictionary<string, object> w = new Dictionary<string, object>();
+            w.Add("PetID", pet.PetID);
+
+            return await UpdateAsync(f, w);
+        }
+
+        public async Task<int> SetActiveAsync(int petId, int isActive)
+        {
+            Dictionary<string, object> f = new Dictionary<string, object>();
+            f.Add("IsActive", isActive);
+
+            Dictionary<string, object> w = new Dictionary<string, object>();
+            w.Add("PetID", petId);
+
+            return await UpdateAsync(f, w);
+        }
+
 
     }
 }

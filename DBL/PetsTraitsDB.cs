@@ -22,6 +22,13 @@ namespace DBL
             return await SelectAllAsync();
         }
 
+        public async Task<List<PetTrait>> GetByPetAsync(int petId)
+        {
+            Dictionary<string, object> p = new Dictionary<string, object>();
+            p.Add("PetID", petId);
+            return await SelectAllAsync(p);
+        }
+
         public async Task<int> DeleteByPetAsync(int petId)
         {
             Dictionary<string, object> p = new Dictionary<string, object>();

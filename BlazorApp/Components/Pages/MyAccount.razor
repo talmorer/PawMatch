@@ -5,7 +5,20 @@
 @inject IServiceProvider ServiceProvider
 
 <div class="account-container">
-    @if (user != null)
+    @if (!loaded)
+    {
+        <div class="card">
+            <p class="info">Loading...</p>
+        </div>
+    }
+    else if (user == null)
+    {
+        <div class="card">
+            <p class="error">❌ You are not logged in.</p>
+            <button class="btn" @onclick="GoLogin">Go to Login</button>
+        </div>
+    }
+    else
     {
         <div class="card">
             <h2 class="logo">🐾 PawMatch</h2>
@@ -18,7 +31,8 @@
                 <p><b>Email:</b> @user.Email</p>
                 <p><b>Phone:</b> @user.Phone</p>
 
-                <button class="btn" @onclick="StartEdit">Edit Details</button>
+                <button class="btn" @onclick="GoMyPets">My Pets</button>
+                <button class="btn" @onclick="() => isEditing = true">Edit Details</button>
                 <button class="btn gray" @onclick="Logout">Logout</button>
 
                 @if (user.IsAdmin)
@@ -36,16 +50,21 @@
                 <button class="btn" @onclick="UpdateUser">Save</button>
                 <button class="btn gray" @onclick="CancelEdit">Cancel</button>
             }
+
+            <p class="msg">@msg</p>
         </div>
     }
 </div>
 
 @code {
-    Customer user;
-    bool isEditing = false;
-
     ProtectedSessionStorage ses;
     NavigationManager nav;
+
+    Customer user;
+    bool loaded = false;
+    bool isEditing = false;
+
+    string msg = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -54,44 +73,65 @@
         nav = (NavigationManager)ServiceProvider.GetService(typeof(NavigationManager));
         ses = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
 
-        var res = await ses.GetAsync<Customer>("customer");
-        if (!res.Success || res.Value == null)
+        var result = await ses.GetAsync<Customer>("customer");
+        if (result.Success && result.Value != null)
         {
-            nav.NavigateTo("/login", true);
-            return;
+            user = result.Value;
+        }
+        else
+        {
+            user = null;
         }
 
-        user = res.Value;
+        loaded = true;
         StateHasChanged();
     }
 
-    void StartEdit() => isEditing = true;
+    void GoLogin()
+    {
+        nav.NavigateTo("/login");
+    }
+
+    void GoMyPets()
+    {
+        nav.NavigateTo("/mypets");
+    }
+
+    void GoAdmin()
+    {
+        nav.NavigateTo("/admin");
+    }
 
     async Task UpdateUser()
     {
+        msg = "";
+
         CustomerDB db = new CustomerDB();
         await db.UpdateAsync(user);
+
         isEditing = false;
+        msg = "Saved.";
     }
 
-    void CancelEdit() => isEditing = false;
+    void CancelEdit()
+    {
+        msg = "";
+        isEditing = false;
+    }
 
     async Task Logout()
     {
         await ses.DeleteAsync("customer");
-        nav.NavigateTo("/login", true);
+        nav.NavigateTo("/login");
     }
-
-    void GoAdmin() => nav.NavigateTo("/admin", true);
 }
 
 <style>
     .account-container {
         display: flex;
         justify-content: center;
-        align-items: flex-start;
-        min-height: calc(100vh - 60px);
-        padding-top: 30px;
+        align-items: center;
+        height: calc(100vh - 60px);
         background: #f8faf9;
     }
 
@@ -100,13 +140,13 @@
         padding: 40px;
         border-radius: 20px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        width: 350px;
+        width: 360px;
         text-align: center;
     }
 
     .logo {
         color: #2e5f3e;
-        margin-bottom: 20px;
+        margin-bottom: 18px;
     }
 
     .input {
@@ -123,10 +163,11 @@
         background-color: #2e5f3e;
         color: white;
         padding: 10px;
-        border: 1px solid transparent;
+        border: none;
         border-radius: 8px;
         cursor: pointer;
         margin-top: 10px;
+        font-weight: 800;
         box-sizing: border-box;
     }
 
@@ -137,4 +178,20 @@
         .btn.blue {
             background-color: #2e7d9f;
         }
+
+    .msg {
+        margin-top: 12px;
+        font-weight: 800;
+        min-height: 18px;
+    }
+
+    .info {
+        font-weight: 800;
+        color: #333;
+    }
+
+    .error {
+        color: red;
+        font-weight: 800;
+    }
 </style>
