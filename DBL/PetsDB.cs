@@ -21,23 +21,33 @@ namespace DBL
         {
             Pet p = new Pet();
 
+            if (row == null || row.Length < 9)
+                return null;
+
             p.PetID = int.Parse(row[0].ToString());
-            p.PetName = row[1].ToString();
-            p.PetAdress = row[2].ToString();
-            p.PetPicture = row[3].ToString();
+            p.PetName = row[1]?.ToString();
+            p.PetAdress = row[2]?.ToString();
+            p.PetPicture = row[3]?.ToString();
             p.PetType = int.Parse(row[4].ToString());
             p.PetBirthYear = int.Parse(row[5].ToString());
             p.UpdateUserID = int.Parse(row[6].ToString());
             p.IsActive = int.Parse(row[7].ToString());
-            p.PetRaceID = int.Parse(row[8].ToString());
 
-            p.TypeName = row[9].ToString();
-            p.RaceName = row[10].ToString();
+            if (row[8] == null || row[8] == System.DBNull.Value)
+                p.PetRaceID = 0;
+            else
+                p.PetRaceID = int.Parse(row[8].ToString());
 
-            p.UploaderFirstName = row[11].ToString();
-            p.UploaderLastName = row[12].ToString();
-            p.UploaderEmail = row[13].ToString();
-            p.UploaderPhone = row[14].ToString();
+            if (row.Length > 9)
+            {
+                p.TypeName = row.Length > 9 ? row[9]?.ToString() : null;
+                p.RaceName = row.Length > 10 ? row[10]?.ToString() : null;
+
+                p.UploaderFirstName = row.Length > 11 ? row[11]?.ToString() : null;
+                p.UploaderLastName = row.Length > 12 ? row[12]?.ToString() : null;
+                p.UploaderEmail = row.Length > 13 ? row[13]?.ToString() : null;
+                p.UploaderPhone = row.Length > 14 ? row[14]?.ToString() : null;
+            }
 
             return p;
         }
@@ -120,10 +130,12 @@ WHERE p.IsActive = 1
 
             return await base.UpdateAsync(v, filter);
         }
+
         public async Task<List<Pet>> GetAllAsync()
         {
             return await SearchAsync(0, 0, "");
         }
+
         public async Task<List<Pet>> GetByUserAsync(int userId)
         {
             string sql = "SELECT * FROM pets WHERE UpdateUserID=@uid";
@@ -136,7 +148,7 @@ WHERE p.IsActive = 1
         {
             Dictionary<string, object> f = new Dictionary<string, object>();
             f.Add("PetName", pet.PetName);
-            f.Add("PetAddress", pet.PetAdress);
+            f.Add("PetAdress", pet.PetAdress);
             f.Add("PetType", pet.PetType);
             f.Add("PetRaceID", pet.PetRaceID);
             f.Add("PetBirthYear", pet.PetBirthYear);
@@ -159,7 +171,5 @@ WHERE p.IsActive = 1
 
             return await UpdateAsync(f, w);
         }
-
-
     }
 }

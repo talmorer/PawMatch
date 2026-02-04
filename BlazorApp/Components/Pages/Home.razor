@@ -41,12 +41,10 @@
                     <div class="meta">@p.TypeName • @p.RaceName</div>
                     <div class="meta">Birth Year: @p.PetBirthYear</div>
                     <div class="meta">City: @p.PetAdress</div>
-
                     @if (petTraitsText.ContainsKey(p.PetID) && !string.IsNullOrEmpty(petTraitsText[p.PetID]))
                     {
                         <div class="traitsLine">@petTraitsText[p.PetID]</div>
                     }
-
                     <div class="contactBox">
                         <div class="contactTitle">Contact</div>
                         <div class="meta">@p.UploaderFirstName @p.UploaderLastName</div>
