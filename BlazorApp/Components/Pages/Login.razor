@@ -1,24 +1,63 @@
 ﻿@page "/login"
 @using DBL
 @using Models
+@using BlazorApp.Services
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @inject IServiceProvider ServiceProvider
 
 <div class="login-container">
     <div class="card">
         <h2 class="logo">🐾 PawMatch</h2>
-        <h3 class="title">Login</h3>
 
-        <input type="text" class="input" placeholder="Email" @bind="email" />
-        <input type="password" class="input" placeholder="Password" @bind="pass" />
+        @if (!forgotMode)
+        {
+            <h3 class="title">Login</h3>
 
-        <button class="btn" @onclick="CheckLogin">Login</button>
+            <input type="text" class="input" placeholder="Email" @bind="email" />
+            <input type="password" class="input" placeholder="Password" @bind="pass" />
 
-        <p class="switch-text">
-            Don't have an account? <a class="switch-link" href="/register">Register</a>
-        </p>
+            <button class="btn" @onclick="CheckLogin">Login</button>
 
-        <p class="msg">@message</p>
+            <p class="switch-text">
+                Don't have an account? <a class="switch-link" href="/register">Register</a>
+            </p>
+
+            <p class="switch-text">
+                <a class="switch-link" href="javascript:void(0)" @onclick="OpenForgot">Forgot password?</a>
+            </p>
+
+            <p class="msg">@message</p>
+        }
+        else
+        {
+            <h3 class="title">Forgot Password</h3>
+
+            @if (step == 1)
+            {
+                <input type="text" class="input" placeholder="Email" @bind="fpEmail" />
+                <button class="btn" @onclick="SendCode">Send Code</button>
+
+                <p class="switch-text">
+                    <a class="switch-link" href="javascript:void(0)" @onclick="BackToLogin">Back to login</a>
+                </p>
+
+                <p class="msg">@message</p>
+            }
+            else
+            {
+                <input type="text" class="input" placeholder="Code from email" @bind="codeInput" />
+                <input type="password" class="input" placeholder="New password" @bind="newPass" />
+                <input type="password" class="input" placeholder="Repeat new password" @bind="newPass2" />
+
+                <button class="btn" @onclick="ResetPassword">Change Password</button>
+
+                <p class="switch-text">
+                    <a class="switch-link" href="javascript:void(0)" @onclick="BackToLogin">Back to login</a>
+                </p>
+
+                <p class="msg">@message</p>
+            }
+        }
     </div>
 </div>
 
@@ -27,19 +66,32 @@
 
     ProtectedSessionStorage ses;
     NavigationManager nav;
+    EmailService mail;
 
     string email = "";
     string pass = "";
     string message = "";
 
+    bool forgotMode = false;
+
+    int step = 1;
+    string fpEmail = "";
+    string codeSent = "";
+    string codeInput = "";
+    string newPass = "";
+    string newPass2 = "";
+
     protected override void OnInitialized()
     {
         nav = (NavigationManager)ServiceProvider.GetService(typeof(NavigationManager));
         ses = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
+        mail = (EmailService)ServiceProvider.GetService(typeof(EmailService));
     }
 
     async Task CheckLogin()
     {
+        message = "";
+
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(pass))
         {
             message = "Please enter both email and password.";
@@ -56,6 +108,91 @@
         else
         {
             message = "Email or password incorrect.";
+        }
+    }
+
+    void OpenForgot()
+    {
+        message = "";
+        forgotMode = true;
+        step = 1;
+        fpEmail = "";
+        codeSent = "";
+        codeInput = "";
+        newPass = "";
+        newPass2 = "";
+    }
+
+    void BackToLogin()
+    {
+        message = "";
+        forgotMode = false;
+    }
+
+    async Task SendCode()
+    {
+        message = "";
+
+        if (string.IsNullOrWhiteSpace(fpEmail))
+        {
+            message = "Please enter your email.";
+            return;
+        }
+
+        Customer u = await db.SelectByEmailAsync(fpEmail);
+        if (u == null)
+        {
+            message = "Email not found.";
+            return;
+        }
+
+        codeSent = new Random().Next(100000, 999999).ToString();
+
+        try
+        {
+            await mail.SendAsync(fpEmail, "PawMatch - Password Reset Code", "Your code is: " + codeSent);
+            step = 2;
+            message = "Code sent. Check your email.";
+        }
+        catch (Exception ex)
+        {
+            message = "Send failed: " + ex.Message;
+        }
+    }
+
+    async Task ResetPassword()
+    {
+        message = "";
+
+        if (string.IsNullOrWhiteSpace(codeInput) || string.IsNullOrWhiteSpace(newPass) || string.IsNullOrWhiteSpace(newPass2))
+        {
+            message = "Please fill all fields.";
+            return;
+        }
+
+        if (codeInput.Trim() != codeSent)
+        {
+            message = "Wrong code.";
+            return;
+        }
+
+        if (newPass != newPass2)
+        {
+            message = "Passwords do not match.";
+            return;
+        }
+
+        int rows = await db.UpdatePasswordByEmailAsync(fpEmail, newPass);
+        if (rows > 0)
+        {
+            message = "Password updated. You can login now.";
+            forgotMode = false;
+            email = fpEmail;
+            pass = "";
+        }
+        else
+        {
+            message = "Update failed.";
         }
     }
 }
@@ -76,8 +213,9 @@
         padding: 40px;
         border-radius: 20px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        width: 320px;
+        width: 340px;
         text-align: center;
+        box-sizing: border-box;
     }
 
     .logo {
@@ -111,6 +249,7 @@
         margin-top: 10px;
         box-sizing: border-box;
         font: inherit;
+        font-weight: 800;
     }
 
     .switch-text {

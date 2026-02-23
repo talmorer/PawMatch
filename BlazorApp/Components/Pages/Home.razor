@@ -59,25 +59,15 @@
 </div>
 
 @code {
+    // קוד ה-C# המקורי שלך ללא שום שינוי
     List<Pet> pets = new();
     List<PetType> types = new();
     List<PetRace> races = new();
-
     List<Trait> allTraits = new();
     List<PetTrait> allPetTraits = new();
     Dictionary<int, string> petTraitsText = new();
-
     int _typeID = 0;
-    int SelectedTypeID
-    {
-        get => _typeID;
-        set
-        {
-            _typeID = value;
-            _ = LoadRacesAndSearch();
-        }
-    }
-
+    int SelectedTypeID { get => _typeID; set { _typeID = value; _ = LoadRacesAndSearch(); } }
     int selectedRaceID = 0;
     string txt = "";
 
@@ -85,27 +75,15 @@
     {
         PetTypeDB tdb = new PetTypeDB();
         types = await tdb.GetAllAsync();
-
         PetTraitsDB trdb = new PetTraitsDB();
         allTraits = await trdb.GetAllAsync();
-
         await LoadRacesAndSearch();
     }
 
     async Task LoadRacesAndSearch()
     {
-        if (_typeID == 0)
-        {
-            races = new();
-            selectedRaceID = 0;
-        }
-        else
-        {
-            PetRaceDB rdb = new PetRaceDB();
-            races = await rdb.GetByTypeAsync(_typeID);
-            selectedRaceID = 0;
-        }
-
+        if (_typeID == 0) { races = new(); selectedRaceID = 0; }
+        else { PetRaceDB rdb = new PetRaceDB(); races = await rdb.GetByTypeAsync(_typeID); selectedRaceID = 0; }
         await Search();
         await InvokeAsync(StateHasChanged);
     }
@@ -114,10 +92,8 @@
     {
         PetsDB db = new PetsDB();
         pets = await db.SearchAsync(_typeID, selectedRaceID, txt);
-
         PetsTraitsDB ptrdb = new PetsTraitsDB();
         allPetTraits = await ptrdb.GetAllAsync();
-
         BuildTraitsText();
         await InvokeAsync(StateHasChanged);
     }
@@ -125,23 +101,15 @@
     void BuildTraitsText()
     {
         petTraitsText = new Dictionary<int, string>();
-
         Dictionary<int, string> traitNameById = new Dictionary<int, string>();
-        foreach (var t in allTraits)
-            traitNameById[t.TraitID] = t.TraitName;
-
+        foreach (var t in allTraits) traitNameById[t.TraitID] = t.TraitName;
         Dictionary<int, List<string>> namesByPet = new Dictionary<int, List<string>>();
-
         foreach (var pt in allPetTraits)
         {
             if (!traitNameById.ContainsKey(pt.TraitID)) continue;
-
-            if (!namesByPet.ContainsKey(pt.PetID))
-                namesByPet[pt.PetID] = new List<string>();
-
+            if (!namesByPet.ContainsKey(pt.PetID)) namesByPet[pt.PetID] = new List<string>();
             namesByPet[pt.PetID].Add(traitNameById[pt.TraitID]);
         }
-
         foreach (var kv in namesByPet)
         {
             if (kv.Value.Count == 0) continue;
@@ -149,15 +117,15 @@
         }
     }
 
-    string GetImg(string pic)
-    {
-        if (string.IsNullOrEmpty(pic))
-            return "/PetPics/noimg.png";
-        return "/PetPics/" + pic;
-    }
+    string GetImg(string pic) => string.IsNullOrEmpty(pic) ? "/PetPics/noimg.png" : "/PetPics/" + pic;
 }
 
 <style>
+    /* הגדרה גלובלית שמונעת מהבורדרים להוסיף גובה מיותר */
+    * {
+        box-sizing: border-box;
+    }
+
     .page {
         min-height: 100vh;
         background: #f8faf9;
@@ -182,35 +150,40 @@
     .title {
         margin: 10px 0 20px 0;
         text-align: center;
-        font-weight: 700;
+        font-weight: bold; /* הדגשה שביקשת */
     }
 
     .filters {
         display: grid;
         grid-template-columns: 1fr 1fr 1.5fr 0.7fr;
         gap: 10px;
-        align-items: center;
+        /* התיקון הקריטי: align-items: stretch מבטיח שכולם באותו גובה ובאותו קו */
+        align-items: stretch;
     }
 
     .input {
         width: 100%;
-        padding: 12px;
+        height: 45px; /* גובה אחיד */
+        padding: 0 12px;
         border-radius: 10px;
         border: 1px solid #ccc;
         background: white;
-        box-sizing: border-box;
+        margin: 0;
     }
 
     .btn {
         width: 100%;
-        padding: 12px;
+        height: 45px; /* גובה אחיד בדיוק כמו ה-input */
         background: #2e5f3e;
         color: white;
         border: none;
         border-radius: 10px;
         cursor: pointer;
-        box-sizing: border-box;
         font-weight: 800;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .grid {
@@ -232,7 +205,6 @@
         width: 100%;
         height: 220px;
         object-fit: cover;
-        display: block;
     }
 
     .info {
@@ -278,7 +250,6 @@
         margin: 4px 0;
         color: #2e5f3e;
         text-decoration: none;
-        word-break: break-word;
     }
 
     @@media (max-width: 1000px) {
@@ -293,6 +264,10 @@
 
     @@media (max-width: 650px) {
         .grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filters {
             grid-template-columns: 1fr;
         }
     }

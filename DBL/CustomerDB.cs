@@ -112,7 +112,27 @@ namespace DBL
                 return list[0];
             return null;
         }
+        public async Task<Customer> SelectByEmailAsync(string email)
+        {
+            string sql = "SELECT * FROM users WHERE Email=@e";
+            Dictionary<string, object> p = new Dictionary<string, object>();
+            p.Add("e", email);
 
+            List<Customer> list = await SelectAllAsync(sql, p);
+            if (list.Count == 1) return list[0];
+            return null;
+        }
+
+        public async Task<int> UpdatePasswordByEmailAsync(string email, string newPass)
+        {
+            Dictionary<string, object> f = new Dictionary<string, object>();
+            f.Add("Password", newPass);
+
+            Dictionary<string, object> w = new Dictionary<string, object>();
+            w.Add("Email", email);
+
+            return await UpdateAsync(f, w);
+        }
 
         //public async Task<List<(string, string)>> GetNameAndEmail4NonAdminsAsync()
         //{

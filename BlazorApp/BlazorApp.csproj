@@ -15,4 +15,8 @@
     <Folder Include="wwwroot\PetPics\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.15.0" />
+  </ItemGroup>
+
 </Project>
