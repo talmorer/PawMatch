@@ -1,11 +1,18 @@
 ﻿@page "/"
 @using DBL
 @using Models
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject IServiceProvider ServiceProvider
 
 <div class="page">
     <div class="top">
         <h2 class="logo">🐾 PawMatch</h2>
         <h3 class="title">Available Pets</h3>
+
+        @if (!string.IsNullOrEmpty(prefText))
+        {
+            <div class="traitsLine">@prefText</div>
+        }
 
         <div class="filters">
             <select class="input" @bind="SelectedTypeID">
@@ -41,10 +48,12 @@
                     <div class="meta">@p.TypeName • @p.RaceName</div>
                     <div class="meta">Birth Year: @p.PetBirthYear</div>
                     <div class="meta">City: @p.PetAdress</div>
+
                     @if (petTraitsText.ContainsKey(p.PetID) && !string.IsNullOrEmpty(petTraitsText[p.PetID]))
                     {
                         <div class="traitsLine">@petTraitsText[p.PetID]</div>
                     }
+
                     <div class="contactBox">
                         <div class="contactTitle">Contact</div>
                         <div class="meta">@p.UploaderFirstName @p.UploaderLastName</div>
@@ -59,31 +68,128 @@
 </div>
 
 @code {
-    // קוד ה-C# המקורי שלך ללא שום שינוי
+    ProtectedSessionStorage ses;
+
     List<Pet> pets = new();
     List<PetType> types = new();
     List<PetRace> races = new();
+
     List<Trait> allTraits = new();
     List<PetTrait> allPetTraits = new();
     Dictionary<int, string> petTraitsText = new();
+
+    string prefText = "";
+
     int _typeID = 0;
-    int SelectedTypeID { get => _typeID; set { _typeID = value; _ = LoadRacesAndSearch(); } }
+    int SelectedTypeID
+    {
+        get => _typeID;
+        set
+        {
+            _typeID = value;
+            _ = LoadRacesAndSearch(false);
+        }
+    }
+
     int selectedRaceID = 0;
     string txt = "";
 
     protected override async Task OnInitializedAsync()
     {
+        ses = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
+
         PetTypeDB tdb = new PetTypeDB();
         types = await tdb.GetAllAsync();
+
         PetTraitsDB trdb = new PetTraitsDB();
         allTraits = await trdb.GetAllAsync();
-        await LoadRacesAndSearch();
     }
 
-    async Task LoadRacesAndSearch()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_typeID == 0) { races = new(); selectedRaceID = 0; }
-        else { PetRaceDB rdb = new PetRaceDB(); races = await rdb.GetByTypeAsync(_typeID); selectedRaceID = 0; }
+        if (!firstRender) return;
+
+        await ApplyPrefs();
+
+        await LoadRacesAndSearch(true);
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task ApplyPrefs()
+    {
+        prefText = "";
+
+        var custRes = await ses.GetAsync<Customer>("customer");
+        if (!custRes.Success || custRes.Value == null)
+            return;
+
+        UserPrefs pref = null;
+
+        var prefRes = await ses.GetAsync<UserPrefs>("prefs");
+        if (prefRes.Success && prefRes.Value != null)
+        {
+            pref = prefRes.Value;
+        }
+        else
+        {
+            UserPrefsDB pdb = new UserPrefsDB();
+            pref = await pdb.GetPrefsAsync(custRes.Value.UserID);
+            if (pref != null)
+                await ses.SetAsync("prefs", pref);
+        }
+
+        if (pref == null) return;
+
+        if (pref.PrefTypeID != 0)
+            _typeID = pref.PrefTypeID;
+
+        if (pref.PrefRaceID != 0)
+            selectedRaceID = pref.PrefRaceID;
+
+        List<string> chips = new();
+
+        if (pref.PrefTypeID != 0)
+        {
+            foreach (var t in types)
+                if (t.TypeID == pref.PrefTypeID) { chips.Add(t.Description); break; }
+        }
+
+        if (pref.PrefRaceID != 0)
+            chips.Add("Race selected");
+
+        if (chips.Count > 0)
+            prefText = "Showing pets based on your preferences: " + string.Join(" • ", chips);
+    }
+
+    async Task LoadRacesAndSearch(bool keepRaceIfPossible)
+    {
+        if (_typeID == 0)
+        {
+            races = new();
+            selectedRaceID = 0;
+        }
+        else
+        {
+            PetRaceDB rdb = new PetRaceDB();
+            races = await rdb.GetByTypeAsync(_typeID);
+
+            if (!keepRaceIfPossible)
+                selectedRaceID = 0;
+            else
+            {
+                if (selectedRaceID != 0)
+                {
+                    bool ok = false;
+                    foreach (var r in races)
+                    {
+                        if (r.PetRaceID == selectedRaceID) { ok = true; break; }
+                    }
+                    if (!ok) selectedRaceID = 0;
+                }
+            }
+        }
+
         await Search();
         await InvokeAsync(StateHasChanged);
     }
@@ -92,8 +198,10 @@
     {
         PetsDB db = new PetsDB();
         pets = await db.SearchAsync(_typeID, selectedRaceID, txt);
+
         PetsTraitsDB ptrdb = new PetsTraitsDB();
         allPetTraits = await ptrdb.GetAllAsync();
+
         BuildTraitsText();
         await InvokeAsync(StateHasChanged);
     }
@@ -101,8 +209,10 @@
     void BuildTraitsText()
     {
         petTraitsText = new Dictionary<int, string>();
+
         Dictionary<int, string> traitNameById = new Dictionary<int, string>();
         foreach (var t in allTraits) traitNameById[t.TraitID] = t.TraitName;
+
         Dictionary<int, List<string>> namesByPet = new Dictionary<int, List<string>>();
         foreach (var pt in allPetTraits)
         {
@@ -110,6 +220,7 @@
             if (!namesByPet.ContainsKey(pt.PetID)) namesByPet[pt.PetID] = new List<string>();
             namesByPet[pt.PetID].Add(traitNameById[pt.TraitID]);
         }
+
         foreach (var kv in namesByPet)
         {
             if (kv.Value.Count == 0) continue;
@@ -121,7 +232,6 @@
 }
 
 <style>
-    /* הגדרה גלובלית שמונעת מהבורדרים להוסיף גובה מיותר */
     * {
         box-sizing: border-box;
     }
@@ -150,20 +260,19 @@
     .title {
         margin: 10px 0 20px 0;
         text-align: center;
-        font-weight: bold; /* הדגשה שביקשת */
+        font-weight: bold;
     }
 
     .filters {
         display: grid;
         grid-template-columns: 1fr 1fr 1.5fr 0.7fr;
         gap: 10px;
-        /* התיקון הקריטי: align-items: stretch מבטיח שכולם באותו גובה ובאותו קו */
         align-items: stretch;
     }
 
     .input {
         width: 100%;
-        height: 45px; /* גובה אחיד */
+        height: 45px;
         padding: 0 12px;
         border-radius: 10px;
         border: 1px solid #ccc;
@@ -173,7 +282,7 @@
 
     .btn {
         width: 100%;
-        height: 45px; /* גובה אחיד בדיוק כמו ה-input */
+        height: 45px;
         background: #2e5f3e;
         color: white;
         border: none;
