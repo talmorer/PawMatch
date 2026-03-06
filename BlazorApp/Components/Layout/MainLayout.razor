@@ -1,24 +1,62 @@
 ﻿@inherits LayoutComponentBase
-@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using Models
+@inject ProtectedSessionStorage MySession
+@inject NavigationManager Nav
 
-<div class="topbar">
-    <div class="brand">🐾 PawMatch</div>
+<header>
+    <div>🐾 PawMatch</div>
 
-    <div class="links">
-        <NavLink href="/" class="lnk" Match="NavLinkMatch.All">Home</NavLink>
-        <NavLink href="/addpet" class="lnk">Add Pet</NavLink>
-        <NavLink href="/mypets" class="lnk">My Pets</NavLink>
-        <NavLink href="/myaccount" class="lnk">My Account</NavLink>
-        <NavLink href="/login" class="lnk">Login</NavLink>
-    </div>
-</div>
+    <nav>
+        @if (isLoggedIn)
+        {
+            <a href="/addpet">Add Pet</a>
+            <a href="/mypets">My Pets</a>
+            <a href="/myaccount">My Account</a>
+        }
+        else
+        {
+            <a href="/login">Login</a>
+            <a href="/register">Register</a>
+        }
 
-<div class="body">
+        @* Placing Home last so it aligns to the top right corner *@
+        <a href="/">Home</a>
+    </nav>
+</header>
+
+<main>
     @Body
-</div>
+</main>
+
+@code {
+    private bool isLoggedIn = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Check if user is logged in to toggle navigation links
+                var res = await MySession.GetAsync<Customer>("customer");
+                if (res.Success && res.Value != null)
+                {
+                    isLoggedIn = true;
+                    StateHasChanged();
+                }
+            }
+            catch
+            {
+                // Silently handle exceptions during prerendering
+            }
+        }
+    }
+}
 
 <style>
-    .topbar {
+    /* Styling completely based on HTML tags, no classes used */
+    header {
         height: 60px;
         background: #ffffff;
         border-bottom: 1px solid #eee;
@@ -29,36 +67,40 @@
         position: sticky;
         top: 0;
         z-index: 5;
+        font-family: 'Segoe UI', sans-serif;
     }
 
-    .brand {
-        font-weight: 900;
-        color: #2e5f3e;
-        font-size: 20px;
-    }
-
-    .links {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-    }
-
-    .lnk {
-        text-decoration: none;
-        color: #222;
-        padding: 8px 12px;
-        border-radius: 10px;
-        font-weight: 700;
-    }
-
-        .lnk.active {
-            background: #2e5f3e;
-            color: white;
+        header > div {
+            font-weight: 900;
+            color: #2e5f3e;
+            font-size: 20px;
         }
 
-    .body {
+        header > nav {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+            header > nav > a {
+                text-decoration: none;
+                color: #222;
+                padding: 8px 12px;
+                border-radius: 10px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: background 0.2s, color 0.2s;
+            }
+
+                header > nav > a:hover {
+                    background: #2e5f3e;
+                    color: white;
+                }
+
+    main {
         min-height: calc(100vh - 60px);
         background: #f8faf9;
         padding: 25px;
+        font-family: 'Segoe UI', sans-serif;
     }
 </style>

@@ -4,19 +4,21 @@
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @inject IServiceProvider ServiceProvider
 
-@if (!loaded)
-{
-    <p>Loading...</p>
-}
-else
-{
-    <div class="account-container">
-        <div class="card">
-            <h2 class="logo">🐾 PawMatch</h2>
-            <h3 class="title">My Account</h3>
+<div>
+    @if (!loaded)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <main>
+            <header>
+                <h2>🐾 PawMatch</h2>
+                <h3>My Account</h3>
+            </header>
 
-            <div class="sec">
-                <div class="secTitle">Profile</div>
+            <section>
+                <h4>Profile</h4>
 
                 @if (!isEditing)
                 {
@@ -25,30 +27,35 @@ else
                     <p><b>Email:</b> @user.Email</p>
                     <p><b>Phone:</b> @user.Phone</p>
 
-                    <button class="btn" @onclick="StartEdit" disabled="@working">Edit Details</button>
-                    <button class="btn gray" @onclick="Logout" disabled="@working">Logout</button>
+                    <div>
+                        <button type="button" @onclick="StartEdit" disabled="@working">Edit Details</button>
+                        <button type="button" @onclick="Logout" disabled="@working">Logout</button>
 
-                    @if (user.IsAdmin)
-                    {
-                        <button class="btn blue" @onclick="GoAdmin" disabled="@working">Go to Admin Panel</button>
-                    }
+                        @if (user.IsAdmin)
+                        {
+                            <button type="button" @onclick="GoAdmin" disabled="@working">Go to Admin Panel</button>
+                        }
+                    </div>
                 }
                 else
                 {
-                    <input class="input" @bind="user.FirstName" placeholder="First name" disabled="@working" />
-                    <input class="input" @bind="user.LastName" placeholder="Last name" disabled="@working" />
-                    <input class="input" @bind="user.Phone" placeholder="Phone" disabled="@working" />
-                    <input class="input" type="password" @bind="user.Password" placeholder="Password" disabled="@working" />
+                    <input type="text" @bind="user.FirstName" placeholder="First name" disabled="@working" />
+                    <input type="text" @bind="user.LastName" placeholder="Last name" disabled="@working" />
+                    <input type="text" @bind="user.Phone" placeholder="Phone" disabled="@working" />
+                    <input type="password" @bind="user.Password" placeholder="Password" disabled="@working" />
 
-                    <button class="btn" @onclick="UpdateUser" disabled="@working">Save</button>
-                    <button class="btn gray" @onclick="CancelEdit" disabled="@working">Cancel</button>
+                    <div>
+                        <button type="button" @onclick="UpdateUser" disabled="@working">Save Profile</button>
+                        <button type="button" @onclick="CancelEdit" disabled="@working">Cancel</button>
+                    </div>
                 }
-            </div>
+            </section>
 
-            <div class="sec">
-                <div class="secTitle">Preferences</div>
+            <section>
+                <h4>Preferences</h4>
 
-                <select class="input" @bind="typeID" @bind:after="TypeChanged" disabled="@working">
+                @* Changed to value and @onchange to correctly trigger the race loading *@
+                <select value="@typeID" @onchange="OnTypeChange" disabled="@working">
                     <option value="0">No preference (All Types)</option>
                     @foreach (var t in types)
                     {
@@ -56,7 +63,7 @@ else
                     }
                 </select>
 
-                <select class="input" @bind="raceID" disabled="@IsRaceDisabled() || working">
+                <select @bind="raceID" disabled="@(IsRaceDisabled() || working)">
                     <option value="0">No preference (All Races)</option>
                     @foreach (var r in races)
                     {
@@ -64,55 +71,55 @@ else
                     }
                 </select>
 
-                <div class="traitsBox">
-                    <div class="traitsTitle">Preferred Traits</div>
-
-                    <div class="traitsGrid">
+                <fieldset>
+                    <legend>Preferred Traits</legend>
+                    <div>
                         @foreach (var tr in traits)
                         {
-                            <label class="trItem">
+                            <label>
                                 <input type="checkbox" checked="@selTraits.Contains(tr.TraitID)" disabled="@working"
                                        @onchange="(e) => ToggleTrait(tr.TraitID, e)" />
                                 <span>@tr.TraitName</span>
                             </label>
                         }
                     </div>
-                </div>
+                </fieldset>
 
-                <button class="btn" @onclick="SavePrefs" disabled="@working">Save Preferences</button>
+                <button type="button" @onclick="SavePrefs" disabled="@working">Save Preferences</button>
 
-                <p class="msg">@msg</p>
-            </div>
+                @if (msg != "")
+                {
+                    <span>@msg</span>
+                }
+            </section>
 
-            <div class="sec">
-                <div class="secTitle">Quick Links</div>
-                <a class="lnk" href="/mypets">My Pets</a>
-                <a class="lnk" href="/">Home</a>
-            </div>
-        </div>
-    </div>
-}
+            <section>
+                <h4>Quick Links</h4>
+                <a href="/mypets">My Pets</a>
+                <a href="/">Home</a>
+            </section>
+        </main>
+    }
+</div>
 
 @code {
-    ProtectedSessionStorage ses;
-    NavigationManager nav;
+    private ProtectedSessionStorage ses;
+    private NavigationManager nav;
 
-    Customer user;
-    bool loaded = false;
+    // Manual instantiation of objects
+    private Customer user = new Customer();
+    private List<PetType> types = new List<PetType>();
+    private List<PetRace> races = new List<PetRace>();
+    private List<Trait> traits = new List<Trait>();
+    private List<int> selTraits = new List<int>();
 
-    bool isEditing = false;
-    bool working = false;
+    private bool loaded = false;
+    private bool isEditing = false;
+    private bool working = false;
 
-    List<PetType> types = new();
-    List<PetRace> races = new();
-
-    List<Trait> traits = new();
-    List<int> selTraits = new();
-
-    int typeID = 0;
-    int raceID = 0;
-
-    string msg = "";
+    private int typeID = 0;
+    private int raceID = 0;
+    private string msg = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -142,7 +149,7 @@ else
         await InvokeAsync(StateHasChanged);
     }
 
-    async Task LoadPrefs()
+    private async Task LoadPrefs()
     {
         UserPrefsDB pdb = new UserPrefsDB();
         var pr = await pdb.GetPrefsAsync(user.UserID);
@@ -160,43 +167,52 @@ else
 
         await LoadRacesByType();
 
-        selTraits = new();
+        selTraits = new List<int>();
         UserPrefsTraitsDB utdb = new UserPrefsTraitsDB();
         var lst = await utdb.GetByUserAsync(user.UserID);
+
         foreach (var x in lst)
+        {
             selTraits.Add(x.TraitID);
+        }
 
         await ses.SetAsync("prefs", new UserPrefs { UserID = user.UserID, CanAdopt = 0, CanUpload = 0, PrefTypeID = typeID, PrefRaceID = raceID });
         await ses.SetAsync("prefsTraits", selTraits);
     }
 
-    bool IsRaceDisabled()
+    private bool IsRaceDisabled()
     {
         if (typeID == 0) return true;
         if (races == null) return true;
         return races.Count == 0;
     }
 
-    async Task TypeChanged()
+    // Manual onchange event handler to fix the select dropdown issue
+    private async Task OnTypeChange(ChangeEventArgs e)
     {
-        raceID = 0;
-        await LoadRacesByType();
-        await InvokeAsync(StateHasChanged);
+        if (working) return;
+
+        if (int.TryParse(e.Value?.ToString(), out int val))
+        {
+            typeID = val;
+            raceID = 0; // Reset race selection when type changes
+            await LoadRacesByType();
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
-    async Task LoadRacesByType()
+    private async Task LoadRacesByType()
     {
-        races = new();
+        races = new List<PetRace>();
         if (typeID == 0) return;
 
         PetRaceDB rdb = new PetRaceDB();
         races = await rdb.GetByTypeAsync(typeID);
     }
 
-    void ToggleTrait(int id, ChangeEventArgs e)
+    private void ToggleTrait(int id, ChangeEventArgs e)
     {
         bool v = false;
-
         if (e != null && e.Value != null)
         {
             if (e.Value is bool)
@@ -216,10 +232,9 @@ else
         }
     }
 
-    async Task SavePrefs()
+    private async Task SavePrefs()
     {
         if (working) return;
-
         try
         {
             working = true;
@@ -240,13 +255,16 @@ else
 
             UserPrefsTraitsDB utdb = new UserPrefsTraitsDB();
             await utdb.DeleteByUserAsync(user.UserID);
+
             foreach (int tid in selTraits)
+            {
                 await utdb.InsertAsync(user.UserID, tid);
+            }
 
             await ses.SetAsync("prefs", p);
             await ses.SetAsync("prefsTraits", selTraits);
 
-            msg = "Saved!";
+            msg = "Preferences Saved!";
         }
         catch (Exception ex)
         {
@@ -259,22 +277,19 @@ else
         }
     }
 
-    void StartEdit() => isEditing = true;
-    void CancelEdit() => isEditing = false;
+    private void StartEdit() => isEditing = true;
+    private void CancelEdit() => isEditing = false;
 
-    async Task UpdateUser()
+    private async Task UpdateUser()
     {
         if (working) return;
-
         try
         {
             working = true;
-
             CustomerDB db = new CustomerDB();
             await db.UpdateAsync(user);
 
             await ses.SetAsync("customer", user);
-
             isEditing = false;
         }
         finally
@@ -284,7 +299,7 @@ else
         }
     }
 
-    async Task Logout()
+    private async Task Logout()
     {
         await ses.DeleteAsync("customer");
         await ses.DeleteAsync("prefs");
@@ -292,154 +307,165 @@ else
         nav.NavigateTo("/login", true);
     }
 
-    void GoAdmin()
+    private void GoAdmin()
     {
         nav.NavigateTo("/admin", true);
     }
 }
 
 <style>
-    .account-container {
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        min-height: calc(100vh - 60px);
-        background: #f8faf9;
-        padding: 30px 0;
-        box-sizing: border-box;
-    }
-
-    .card {
-        width: 560px;
+    /* Styling exclusively based on tags to meet the rigid separation requirement */
+    div > main {
+        max-width: 600px;
+        margin: 40px auto;
         background: white;
-        padding: 30px;
+        padding: 40px;
         border-radius: 20px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        box-sizing: border-box;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        font-family: 'Segoe UI', sans-serif;
     }
 
-    .logo {
+    main > header {
         text-align: center;
-        color: #2e5f3e;
-        margin: 0 0 10px 0;
+        margin-bottom: 30px;
     }
 
-    .title {
-        text-align: center;
-        margin: 0 0 18px 0;
-        font-weight: 800;
-    }
+        main > header > h2 {
+            color: #2e5f3e;
+            margin: 0 0 5px 0;
+        }
 
-    .sec {
-        margin-top: 14px;
-        padding: 16px;
+        main > header > h3 {
+            margin: 0;
+            font-weight: 800;
+            color: #333;
+        }
+
+    main > section {
+        margin-top: 25px;
+        padding: 20px;
         border: 1px solid #eee;
         border-radius: 16px;
-        background: #fbfbfb;
-        box-sizing: border-box;
+        background: #fdfdfd;
     }
 
-    .secTitle {
-        font-weight: 900;
-        color: #2e5f3e;
-        margin-bottom: 10px;
-    }
-
-    .input {
-        width: 100%;
-        padding: 12px;
-        margin: 8px 0;
-        border: 1px solid #ccc;
-        border-radius: 10px;
-        box-sizing: border-box;
-        font: inherit;
-        background: white;
-    }
-
-    .btn {
-        width: 100%;
-        background-color: #2e5f3e;
-        color: white;
-        padding: 10px;
-        border: 1px solid transparent;
-        border-radius: 10px;
-        cursor: pointer;
-        margin-top: 10px;
-        box-sizing: border-box;
-        font: inherit;
-        font-weight: 800;
-    }
-
-        .btn.gray {
-            background: #777;
+        main > section > h4 {
+            font-weight: 900;
+            color: #2e5f3e;
+            margin: 0 0 15px 0;
+            font-size: 1.2rem;
         }
 
-        .btn.blue {
-            background: #2e7d9f;
+        main > section > p {
+            margin: 8px 0;
+            color: #444;
         }
 
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+        main > section > input,
+        main > section > select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-sizing: border-box;
+            font: inherit;
+            background: white;
         }
 
-    .msg {
-        margin-top: 10px;
-        font-weight: 800;
-        min-height: 18px;
-    }
+            main > section > select:disabled {
+                background-color: #f1f1f1;
+                color: #888;
+                cursor: not-allowed;
+            }
 
-    .lnk {
-        display: inline-block;
-        margin-right: 8px;
-        margin-top: 8px;
-        padding: 10px 14px;
-        border-radius: 12px;
-        background: #eef5f0;
-        border: 1px solid #dcece1;
-        color: #2e5f3e;
-        text-decoration: none;
-        font-weight: 900;
-    }
-
-    .traitsBox {
-        margin-top: 10px;
-        padding: 14px;
-        border: 1px solid #e9e9e9;
-        border-radius: 14px;
-        background: #fff;
-    }
-
-    .traitsTitle {
-        font-weight: 900;
-        margin-bottom: 10px;
-        color: #2e5f3e;
-    }
-
-    .traitsGrid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-    }
-
-    .trItem {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        padding: 8px 10px;
-        border-radius: 12px;
-        background: #fbfbfb;
-        border: 1px solid #eee;
-        font-weight: 800;
-    }
-
-    @@media (max-width: 650px) {
-        .card {
-            width: 92%;
+        main > section > div > button,
+        main > section > button {
+            width: 100%;
+            background-color: #2e5f3e;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+            transition: opacity 0.2s;
         }
 
-        .traitsGrid {
-            grid-template-columns: 1fr;
+            main > section > div > button:nth-of-type(2) {
+                background-color: #777; /* Logout or Cancel button */
+            }
+
+            main > section > div > button:nth-of-type(3) {
+                background-color: #2e7d9f; /* Go to Admin button */
+            }
+
+            main > section > div > button:disabled,
+            main > section > button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+
+        main > section > span {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+            color: #2e5f3e;
+            background-color: #eef5f0;
+            padding: 10px;
+            border-radius: 8px;
         }
-    }
+
+        main > section > fieldset {
+            margin-top: 15px;
+            padding: 15px;
+            border: 1px solid #e9e9e9;
+            border-radius: 14px;
+            background: #fff;
+        }
+
+            main > section > fieldset > legend {
+                font-weight: bold;
+                color: #2e5f3e;
+                padding: 0 8px;
+            }
+
+            main > section > fieldset > div {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+                main > section > fieldset > div > label {
+                    display: flex;
+                    gap: 10px;
+                    align-items: center;
+                    padding: 10px;
+                    border-radius: 12px;
+                    background: #fbfbfb;
+                    border: 1px solid #eee;
+                    font-weight: 700;
+                    cursor: pointer;
+                    color: #333;
+                }
+
+        main > section > a {
+            display: inline-block;
+            margin-right: 10px;
+            margin-top: 10px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            background: #eef5f0;
+            border: 1px solid #dcece1;
+            color: #2e5f3e;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+            main > section > a:hover {
+                background: #e0ece4;
+            }
 </style>

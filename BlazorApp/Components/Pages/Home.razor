@@ -77,7 +77,6 @@
     List<Trait> allTraits = new();
     List<PetTrait> allPetTraits = new();
     Dictionary<int, string> petTraitsText = new();
-
     string prefText = "";
 
     int _typeID = 0;
@@ -110,7 +109,6 @@
         if (!firstRender) return;
 
         await ApplyPrefs();
-
         await LoadRacesAndSearch(true);
 
         await InvokeAsync(StateHasChanged);
@@ -119,13 +117,14 @@
     async Task ApplyPrefs()
     {
         prefText = "";
-
         var custRes = await ses.GetAsync<Customer>("customer");
         if (!custRes.Success || custRes.Value == null)
             return;
 
-        UserPrefs pref = null;
+        int userId = custRes.Value.UserID;
 
+        // 1. Fetch main preferences (Type / Race)
+        UserPrefs pref = null;
         var prefRes = await ses.GetAsync<UserPrefs>("prefs");
         if (prefRes.Success && prefRes.Value != null)
         {
@@ -134,32 +133,76 @@
         else
         {
             UserPrefsDB pdb = new UserPrefsDB();
-            pref = await pdb.GetPrefsAsync(custRes.Value.UserID);
+            pref = await pdb.GetPrefsAsync(userId);
             if (pref != null)
                 await ses.SetAsync("prefs", pref);
         }
 
-        if (pref == null) return;
-
-        if (pref.PrefTypeID != 0)
-            _typeID = pref.PrefTypeID;
-
-        if (pref.PrefRaceID != 0)
-            selectedRaceID = pref.PrefRaceID;
-
-        List<string> chips = new();
-
-        if (pref.PrefTypeID != 0)
+        // 2. Fetch trait preferences
+        List<int> userTraits = new List<int>();
+        var traitRes = await ses.GetAsync<List<int>>("prefsTraits");
+        if (traitRes.Success && traitRes.Value != null)
         {
-            foreach (var t in types)
-                if (t.TypeID == pref.PrefTypeID) { chips.Add(t.Description); break; }
+            userTraits = traitRes.Value;
+        }
+        else
+        {
+            UserPrefsTraitsDB utdb = new UserPrefsTraitsDB();
+            var lst = await utdb.GetByUserAsync(userId);
+            foreach (var x in lst)
+                userTraits.Add(x.TraitID);
+            await ses.SetAsync("prefsTraits", userTraits);
         }
 
-        if (pref.PrefRaceID != 0)
+        // If no preferences at all, just return
+        if (pref == null && userTraits.Count == 0) return;
+
+        // Apply filters
+        if (pref != null && pref.PrefTypeID != 0)
+            _typeID = pref.PrefTypeID;
+
+        if (pref != null && pref.PrefRaceID != 0)
+            selectedRaceID = pref.PrefRaceID;
+
+        // Build the text
+        List<string> chips = new();
+
+        if (pref != null && pref.PrefTypeID != 0)
+        {
+            foreach (var t in types)
+            {
+                if (t.TypeID == pref.PrefTypeID)
+                {
+                    chips.Add(t.Description);
+                    break;
+                }
+            }
+        }
+        else if (userTraits.Count > 0)
+        {
+            // If user has no specific type preference but did select traits
+            chips.Add("All Types");
+        }
+
+        if (pref != null && pref.PrefRaceID != 0)
             chips.Add("Race selected");
 
+        if (userTraits.Count > 0)
+        {
+            List<string> tNames = new();
+            foreach (int tid in userTraits)
+            {
+                var trObj = allTraits.FirstOrDefault(x => x.TraitID == tid);
+                if (trObj != null) tNames.Add(trObj.TraitName);
+            }
+            if (tNames.Count > 0)
+            {
+                chips.Add("Traits: " + string.Join(", ", tNames));
+            }
+        }
+
         if (chips.Count > 0)
-            prefText = "Showing pets based on your preferences: " + string.Join(" • ", chips);
+            prefText = "Preferences applied: " + string.Join(" • ", chips);
     }
 
     async Task LoadRacesAndSearch(bool keepRaceIfPossible)
@@ -209,7 +252,6 @@
     void BuildTraitsText()
     {
         petTraitsText = new Dictionary<int, string>();
-
         Dictionary<int, string> traitNameById = new Dictionary<int, string>();
         foreach (var t in allTraits) traitNameById[t.TraitID] = t.TraitName;
 
@@ -341,6 +383,8 @@
         color: #2e5f3e;
         font-weight: 800;
         font-size: 13px;
+        text-align: center;
+        margin-bottom: 15px;
     }
 
     .contactBox {

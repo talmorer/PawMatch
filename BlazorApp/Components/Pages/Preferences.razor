@@ -2,166 +2,223 @@
 @using DBL
 @using Models
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-@inject IServiceProvider ServiceProvider
+@inject ProtectedSessionStorage MySession
+@inject NavigationManager Nav
 
-<h2 class="title">Preferences</h2>
+<div>
+    <header>
+        <h2>My Preferences</h2>
+    </header>
 
-@if (!loaded)
-{
-    <p>Loading...</p>
-}
-else
-{
-    <div class="box">
-        <select class="input" @bind="typeID" @bind:after="TypeChanged">
-            <option value="0">Select Type</option>
-            @foreach (var t in types)
+    @if (!loaded)
+    {
+        <p>Loading your preferences...</p>
+    }
+    else
+    {
+        <main>
+            <label>Preferred Pet Type</label>
+            <select value="@typeID" @onchange="OnTypeChange">
+                <option value="0">Select Type</option>
+                @foreach (var t in types)
+                {
+                    <option value="@t.TypeID">@t.Description</option>
+                }
+            </select>
+
+            <label>Preferred Race</label>
+            <select value="@raceID" @onchange="OnRaceChange" disabled="@IsRaceDisabled()">
+                <option value="0">Select Race</option>
+                @foreach (var r in races)
+                {
+                    <option value="@r.PetRaceID">@r.Description</option>
+                }
+            </select>
+
+            <button type="button" @onclick="SavePreferences">Save Preferences</button>
+
+            @if (msg != "")
             {
-                <option value="@t.TypeID">@t.Description</option>
+                <span>@msg</span>
             }
-        </select>
-
-        <select class="input" @bind="raceID" disabled="@IsRaceDisabled()">
-            <option value="0">Select Race</option>
-            @foreach (var r in races)
-            {
-                <option value="@r.PetRaceID">@r.Description</option>
-            }
-        </select>
-
-        <button class="btn" @onclick="Save">Save</button>
-        <p class="msg">@msg</p>
-    </div>
-}
+        </main>
+    }
+</div>
 
 @code {
-    ProtectedSessionStorage ses;
-    NavigationManager nav;
+    // Manual initialization of objects
+    private Customer currentUser = new Customer();
+    private bool loaded = false;
 
-    Customer cu;
-    bool loaded = false;
+    private List<PetType> types = new List<PetType>();
+    private List<PetRace> races = new List<PetRace>();
 
-    List<PetType> types = new();
-    List<PetRace> races = new();
-
-    int typeID = 0;
-    int raceID = 0;
-
-    string msg = "";
+    private int typeID = 0;
+    private int raceID = 0;
+    private string msg = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
-
-        nav = (NavigationManager)ServiceProvider.GetService(typeof(NavigationManager));
-        ses = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
-
-        var res = await ses.GetAsync<Customer>("customer");
-        if (!res.Success || res.Value == null)
+        if (firstRender)
         {
-            nav.NavigateTo("/login", true);
-            return;
+            // Securely load user session
+            var res = await MySession.GetAsync<Customer>("customer");
+            if (res.Success && res.Value != null)
+            {
+                currentUser = res.Value;
+
+                // Load base types
+                PetTypeDB tdb = new PetTypeDB();
+                types = await tdb.GetAllAsync();
+
+                loaded = true;
+                StateHasChanged();
+            }
+            else
+            {
+                Nav.NavigateTo("/login");
+            }
         }
+    }
 
-        cu = res.Value;
-
-        PetTypeDB tdb = new PetTypeDB();
-        types = await tdb.GetAllAsync();
-
-        UserPrefsDB pdb = new UserPrefsDB();
-        var pr = await pdb.GetPrefsAsync(cu.UserID);
-
-        if (pr != null)
+    // Manual onchange event to correctly update the UI when type changes
+    private async Task OnTypeChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val))
         {
-            typeID = pr.PrefTypeID;
-            raceID = pr.PrefRaceID;
+            typeID = val;
+            raceID = 0; // Reset race selection
+            msg = "";
+            races.Clear();
 
-            if (typeID != 0)
+            if (typeID > 0)
             {
                 PetRaceDB rdb = new PetRaceDB();
                 races = await rdb.GetByTypeAsync(typeID);
             }
+
+            // Force UI update
+            await InvokeAsync(StateHasChanged);
         }
-
-        loaded = true;
-        StateHasChanged();
     }
 
-    bool IsRaceDisabled()
+    // Manual onchange for race
+    private void OnRaceChange(ChangeEventArgs e)
     {
-        return typeID == 0 || races == null || races.Count == 0;
-    }
-
-    async Task TypeChanged()
-    {
-        raceID = 0;
-        msg = "";
-        races = new();
-
-        if (typeID == 0) return;
-
-        PetRaceDB rdb = new PetRaceDB();
-        races = await rdb.GetByTypeAsync(typeID);
-    }
-
-    async Task Save()
-    {
-        UserPrefs p = new UserPrefs
+        if (int.TryParse(e.Value?.ToString(), out int val))
         {
-            UserID = cu.UserID,
-            CanAdopt = 0,
-            CanUpload = 0,
-            PrefTypeID = typeID,
-            PrefRaceID = raceID
-        };
+            raceID = val;
+            msg = "";
+        }
+    }
 
-        UserPrefsDB pdb = new UserPrefsDB();
-        await pdb.SavePrefsAsync(p);
+    private bool IsRaceDisabled()
+    {
+        return typeID == 0 || races.Count == 0;
+    }
 
-        msg = "Saved!";
+    private async Task SavePreferences()
+    {
+        try
+        {
+            UserPrefs p = new UserPrefs
+            {
+                UserID = currentUser.UserID,
+                CanAdopt = 0,
+                CanUpload = 0,
+                PrefTypeID = typeID,
+                PrefRaceID = raceID
+            };
+
+            UserPrefsDB pdb = new UserPrefsDB();
+            await pdb.SavePrefsAsync(p);
+
+            msg = "Preferences saved successfully!";
+        }
+        catch (Exception)
+        {
+            msg = "Error saving preferences.";
+        }
     }
 }
 
 <style>
-    .title {
+    /* Tag-based styling to avoid helper classes */
+    div > header {
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
         color: #2e5f3e;
+        font-family: 'Segoe UI', sans-serif;
     }
 
-    .box {
-        width: 420px;
+    div > p {
+        text-align: center;
+        font-family: sans-serif;
+        color: #555;
+    }
+
+    main {
+        width: 400px;
         margin: auto;
-        padding: 30px;
+        padding: 35px;
         border-radius: 20px;
-        background: #fff;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-
-    .input {
-        width: 100%;
-        padding: 12px;
-        margin: 10px 0;
-        border-radius: 8px;
-        border: 1px solid #ccc;
+        background: #ffffff;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        font-family: 'Segoe UI', sans-serif;
         box-sizing: border-box;
     }
 
-    .btn {
-        width: 100%;
-        padding: 12px;
-        background: #2e5f3e;
-        color: white;
-        border: 1px solid transparent;
-        border-radius: 8px;
-        cursor: pointer;
-        margin-top: 10px;
-        font-weight: 800;
-        box-sizing: border-box;
-    }
+        main > label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: -5px;
+        }
 
-    .msg {
-        margin-top: 10px;
-        font-weight: 800;
-    }
+        main > select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #dcdcdc;
+            font-size: 1rem;
+            background-color: #fdfdfd;
+            box-sizing: border-box;
+        }
+
+            main > select:disabled {
+                background-color: #f1f1f1;
+                cursor: not-allowed;
+                color: #888;
+            }
+
+        main > button {
+            width: 100%;
+            background-color: #2e5f3e;
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 800;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-top: 10px;
+        }
+
+            main > button:hover {
+                opacity: 0.85;
+            }
+
+        main > span {
+            display: block;
+            margin-top: 5px;
+            font-weight: bold;
+            text-align: center;
+            color: #2e5f3e;
+            background-color: #eef5f0;
+            padding: 10px;
+            border-radius: 8px;
+        }
 </style>
