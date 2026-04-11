@@ -86,7 +86,6 @@ else
     string birthYearText = "";
     string fileName = "";
     string message = "";
-
     List<PetType> types = new();
     List<PetRace> races = new();
 
@@ -145,7 +144,6 @@ else
     void ToggleTrait(int id, ChangeEventArgs e)
     {
         bool v = false;
-
         if (e != null && e.Value != null)
         {
             if (e.Value is bool)
@@ -194,7 +192,6 @@ else
             Directory.CreateDirectory(folder);
 
             string path = Path.Combine(folder, newName);
-
             long maxSize = 5 * 1024 * 1024;
             using var fs = new FileStream(path, FileMode.Create);
             await file.OpenReadStream(maxSize).CopyToAsync(fs);
@@ -218,6 +215,7 @@ else
     {
         if (string.IsNullOrEmpty(fileName))
             return "/PetPics/noimg.png";
+
         return "/PetPics/" + fileName.Trim();
     }
 
@@ -256,7 +254,6 @@ else
             }
 
             PetsDB db = new PetsDB();
-
             Pet p = new Pet
             {
                 PetName = petName,
@@ -283,6 +280,9 @@ else
                 await ptDb.InsertAsync(ins.PetID, tid);
 
             message = "Saved.";
+
+            // Navigate away to prevent double clicking/submission
+            nav.NavigateTo("/mypets");
         }
         catch (Exception ex)
         {

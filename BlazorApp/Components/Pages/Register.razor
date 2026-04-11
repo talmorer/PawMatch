@@ -15,10 +15,12 @@
         <input type="text" @bind="customer.Email" placeholder="Email" class="input" />
         <input type="text" @bind="customer.Phone" placeholder="Phone" class="input" />
         <input type="password" @bind="customer.Password" placeholder="Password" class="input" />
+
         <button class="btn" @onclick="RegisterUser">Register</button>
 
         <p class="switch-text">
-            Already have an account? <a href="/login">Login</a>
+            Already have an account?
+            <a href="/login">Login</a>
         </p>
 
         <p class="error">@message</p>
@@ -32,18 +34,59 @@
 
     private async Task RegisterUser()
     {
+        message = "";
+
+        // 1. Check if fields are empty
         if (string.IsNullOrWhiteSpace(customer.FirstName) ||
             string.IsNullOrWhiteSpace(customer.LastName) ||
             string.IsNullOrWhiteSpace(customer.Email) ||
+            string.IsNullOrWhiteSpace(customer.Phone) ||
             string.IsNullOrWhiteSpace(customer.Password))
         {
             message = "Please fill in all fields.";
             return;
         }
 
-        await db.InsertGetObjAsync(customer);
-        await MySession.SetAsync("customer", customer);
-        nav.NavigateTo("/myaccount");
+        // 2. Validate Email Format using Regex
+        if (!System.Text.RegularExpressions.Regex.IsMatch(customer.Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+        {
+            message = "Please enter a valid email address.";
+            return;
+        }
+
+        // 3. Validate Phone Format (Exactly 10 digits, numbers only)
+        if (!System.Text.RegularExpressions.Regex.IsMatch(customer.Phone, @"^\d{10}$"))
+        {
+            message = "Please enter a valid phone number containing exactly 10 digits.";
+            return;
+        }
+
+        try
+        {
+            // 4. Check for Unique Email in Database
+            var allUsers = await db.GetAllAsync();
+            if (allUsers.Any(u => u.Email.Equals(customer.Email, StringComparison.OrdinalIgnoreCase)))
+            {
+                message = "This email is already registered. Try logging in.";
+                return;
+            }
+        }
+        catch
+        {
+            // If GetAllAsync fails or isn't implemented perfectly, the try-catch below will catch SQL unique constraints
+        }
+
+        try
+        {
+            // 5. Insert into Database
+            await db.InsertGetObjAsync(customer);
+            await MySession.SetAsync("customer", customer);
+            nav.NavigateTo("/myaccount");
+        }
+        catch (Exception)
+        {
+            message = "Registration failed. Email might already exist in the database.";
+        }
     }
 }
 

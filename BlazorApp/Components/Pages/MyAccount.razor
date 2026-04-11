@@ -2,60 +2,80 @@
 @using DBL
 @using Models
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-@inject IServiceProvider ServiceProvider
+@inject ProtectedSessionStorage MySession
+@inject NavigationManager nav
 
-<div>
+<div class="account-page-wrapper">
     @if (!loaded)
     {
-        <p>Loading...</p>
+        <div class="loading-state">Loading...</div>
     }
     else
     {
-        <main>
+        <main class="account-card">
             <header>
-                <h2>🐾 PawMatch</h2>
+                <h2 class="brand-logo">🐾 PawMatch</h2>
                 <h3>My Account</h3>
             </header>
 
-            <section>
-                <h4>Profile</h4>
+            <section class="info-section">
+                <h4>Profile Information</h4>
 
                 @if (!isEditing)
                 {
-                    <p><b>First Name:</b> @user.FirstName</p>
-                    <p><b>Last Name:</b> @user.LastName</p>
-                    <p><b>Email:</b> @user.Email</p>
-                    <p><b>Phone:</b> @user.Phone</p>
+                    <div class="display-data">
+                        <p><b>First Name:</b> @user.FirstName</p>
+                        <p><b>Last Name:</b> @user.LastName</p>
+                        <p><b>Email:</b> @user.Email</p>
+                        <p><b>Phone:</b> @user.Phone</p>
+                    </div>
 
-                    <div>
-                        <button type="button" @onclick="StartEdit" disabled="@working">Edit Details</button>
-                        <button type="button" @onclick="Logout" disabled="@working">Logout</button>
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-primary" @onclick="StartEdit" disabled="@working">Edit Details</button>
+                        <button type="button" class="btn btn-secondary" @onclick="Logout" disabled="@working">Logout</button>
 
                         @if (user.IsAdmin)
                         {
-                            <button type="button" @onclick="GoAdmin" disabled="@working">Go to Admin Panel</button>
+                            <button type="button" class="btn btn-info" @onclick="GoAdmin" disabled="@working">Admin Panel</button>
                         }
                     </div>
                 }
                 else
                 {
-                    <input type="text" @bind="user.FirstName" placeholder="First name" disabled="@working" />
-                    <input type="text" @bind="user.LastName" placeholder="Last name" disabled="@working" />
-                    <input type="text" @bind="user.Phone" placeholder="Phone" disabled="@working" />
-                    <input type="password" @bind="user.Password" placeholder="Password" disabled="@working" />
+                    <div class="edit-form">
+                        <label>First Name:</label>
+                        <input type="text" @bind="user.FirstName" class="form-control" />
 
-                    <div>
-                        <button type="button" @onclick="UpdateUser" disabled="@working">Save Profile</button>
-                        <button type="button" @onclick="CancelEdit" disabled="@working">Cancel</button>
+                        <label>Last Name:</label>
+                        <input type="text" @bind="user.LastName" class="form-control" />
+
+                        <label>Email:</label>
+                        <input type="text" @bind="user.Email" class="form-control" />
+
+                        <label>Phone:</label>
+                        <input type="text" @bind="user.Phone" class="form-control" />
+
+                        <label>Password:</label>
+                        <input type="password" @bind="user.Password" class="form-control" />
+
+                        <div class="action-buttons">
+                            <button type="button" class="btn btn-primary" @onclick="UpdateUser" disabled="@working">Save Profile</button>
+                            <button type="button" class="btn btn-secondary" @onclick="CancelEdit" disabled="@working">Cancel</button>
+                        </div>
                     </div>
+                }
+
+                @if (profileMsg != "")
+                {
+                    <div class="error-alert">@profileMsg</div>
                 }
             </section>
 
-            <section>
-                <h4>Preferences</h4>
+            <section class="info-section">
+                <h4>Matching Preferences</h4>
 
-                @* Changed to value and @onchange to correctly trigger the race loading *@
-                <select value="@typeID" @onchange="OnTypeChange" disabled="@working">
+                <label>Preferred Pet Type:</label>
+                <select value="@typeID" @onchange="OnTypeChange" class="form-control" disabled="@working">
                     <option value="0">No preference (All Types)</option>
                     @foreach (var t in types)
                     {
@@ -63,7 +83,8 @@
                     }
                 </select>
 
-                <select @bind="raceID" disabled="@(IsRaceDisabled() || working)">
+                <label>Preferred Race:</label>
+                <select @bind="raceID" class="form-control" disabled="@(IsRaceDisabled() || working)">
                     <option value="0">No preference (All Races)</option>
                     @foreach (var r in races)
                     {
@@ -71,12 +92,12 @@
                     }
                 </select>
 
-                <fieldset>
+                <fieldset class="traits-box">
                     <legend>Preferred Traits</legend>
-                    <div>
+                    <div class="traits-list">
                         @foreach (var tr in traits)
                         {
-                            <label>
+                            <label class="trait-checkbox">
                                 <input type="checkbox" checked="@selTraits.Contains(tr.TraitID)" disabled="@working"
                                        @onchange="(e) => ToggleTrait(tr.TraitID, e)" />
                                 <span>@tr.TraitName</span>
@@ -85,28 +106,26 @@
                     </div>
                 </fieldset>
 
-                <button type="button" @onclick="SavePrefs" disabled="@working">Save Preferences</button>
+                <button type="button" class="btn btn-primary full-width" @onclick="SavePrefs" disabled="@working">Save Preferences</button>
 
-                @if (msg != "")
+                @if (prefsMsg != "")
                 {
-                    <span>@msg</span>
+                    <div class="status-alert">@prefsMsg</div>
                 }
             </section>
 
-            <section>
+            <section class="links-section">
                 <h4>Quick Links</h4>
-                <a href="/mypets">My Pets</a>
-                <a href="/">Home</a>
+                <div class="nav-links">
+                    <a href="/mypets">My Pets</a>
+                    <a href="/">Home</a>
+                </div>
             </section>
         </main>
     }
 </div>
 
 @code {
-    private ProtectedSessionStorage ses;
-    private NavigationManager nav;
-
-    // Manual instantiation of objects
     private Customer user = new Customer();
     private List<PetType> types = new List<PetType>();
     private List<PetRace> races = new List<PetRace>();
@@ -119,16 +138,14 @@
 
     private int typeID = 0;
     private int raceID = 0;
-    private string msg = "";
+    private string profileMsg = "";
+    private string prefsMsg = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
-        nav = (NavigationManager)ServiceProvider.GetService(typeof(NavigationManager));
-        ses = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
-
-        var res = await ses.GetAsync<Customer>("customer");
+        var res = await MySession.GetAsync<Customer>("customer");
         if (!res.Success || res.Value == null)
         {
             nav.NavigateTo("/login", true);
@@ -159,45 +176,22 @@
             typeID = pr.PrefTypeID;
             raceID = pr.PrefRaceID;
         }
-        else
-        {
-            typeID = 0;
-            raceID = 0;
-        }
 
         await LoadRacesByType();
 
         selTraits = new List<int>();
         UserPrefsTraitsDB utdb = new UserPrefsTraitsDB();
         var lst = await utdb.GetByUserAsync(user.UserID);
-
-        foreach (var x in lst)
-        {
-            selTraits.Add(x.TraitID);
-        }
-
-        await ses.SetAsync("prefs", new UserPrefs { UserID = user.UserID, CanAdopt = 0, CanUpload = 0, PrefTypeID = typeID, PrefRaceID = raceID });
-        await ses.SetAsync("prefsTraits", selTraits);
+        foreach (var x in lst) { selTraits.Add(x.TraitID); }
     }
 
-    private bool IsRaceDisabled()
-    {
-        if (typeID == 0) return true;
-        if (races == null) return true;
-        return races.Count == 0;
-    }
-
-    // Manual onchange event handler to fix the select dropdown issue
     private async Task OnTypeChange(ChangeEventArgs e)
     {
-        if (working) return;
-
         if (int.TryParse(e.Value?.ToString(), out int val))
         {
             typeID = val;
-            raceID = 0; // Reset race selection when type changes
+            raceID = 0;
             await LoadRacesByType();
-            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -205,267 +199,229 @@
     {
         races = new List<PetRace>();
         if (typeID == 0) return;
-
         PetRaceDB rdb = new PetRaceDB();
         races = await rdb.GetByTypeAsync(typeID);
     }
 
+    private bool IsRaceDisabled() => typeID == 0 || races == null || races.Count == 0;
+
     private void ToggleTrait(int id, ChangeEventArgs e)
     {
-        bool v = false;
-        if (e != null && e.Value != null)
-        {
-            if (e.Value is bool)
-                v = (bool)e.Value;
-            else
-                v = e.Value.ToString() == "true";
-        }
-
-        if (v)
-        {
-            if (!selTraits.Contains(id))
-                selTraits.Add(id);
-        }
-        else
-        {
-            selTraits.Remove(id);
-        }
+        bool v = (bool)e.Value;
+        if (v) { if (!selTraits.Contains(id)) selTraits.Add(id); }
+        else { selTraits.Remove(id); }
     }
 
     private async Task SavePrefs()
     {
-        if (working) return;
+        working = true;
+        prefsMsg = "Saving...";
         try
         {
-            working = true;
-            msg = "Saving...";
-            await InvokeAsync(StateHasChanged);
-
-            UserPrefs p = new UserPrefs
-            {
-                UserID = user.UserID,
-                CanAdopt = 0,
-                CanUpload = 0,
-                PrefTypeID = typeID,
-                PrefRaceID = raceID
-            };
-
+            UserPrefs p = new UserPrefs { UserID = user.UserID, PrefTypeID = typeID, PrefRaceID = raceID };
             UserPrefsDB pdb = new UserPrefsDB();
             await pdb.SavePrefsAsync(p);
 
             UserPrefsTraitsDB utdb = new UserPrefsTraitsDB();
             await utdb.DeleteByUserAsync(user.UserID);
+            foreach (int tid in selTraits) { await utdb.InsertAsync(user.UserID, tid); }
 
-            foreach (int tid in selTraits)
-            {
-                await utdb.InsertAsync(user.UserID, tid);
-            }
-
-            await ses.SetAsync("prefs", p);
-            await ses.SetAsync("prefsTraits", selTraits);
-
-            msg = "Preferences Saved!";
+            prefsMsg = "Preferences Saved!";
         }
-        catch (Exception ex)
-        {
-            msg = "Save failed: " + ex.Message;
-        }
-        finally
-        {
-            working = false;
-            await InvokeAsync(StateHasChanged);
-        }
+        catch { prefsMsg = "Error saving."; }
+        finally { working = false; }
     }
 
-    private void StartEdit() => isEditing = true;
-    private void CancelEdit() => isEditing = false;
+    private void StartEdit() { isEditing = true; profileMsg = ""; }
+    private void CancelEdit() { isEditing = false; profileMsg = ""; }
 
     private async Task UpdateUser()
     {
-        if (working) return;
+        profileMsg = "";
+
+        if (string.IsNullOrWhiteSpace(user.FirstName) || string.IsNullOrWhiteSpace(user.LastName) ||
+            string.IsNullOrWhiteSpace(user.Email) || string.IsNullOrWhiteSpace(user.Phone) ||
+            string.IsNullOrWhiteSpace(user.Password))
+        {
+            profileMsg = "Please fill in all fields.";
+            return;
+        }
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(user.Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+        {
+            profileMsg = "Invalid email format.";
+            return;
+        }
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(user.Phone, @"^\d{10}$"))
+        {
+            profileMsg = "Phone must be exactly 10 digits.";
+            return;
+        }
+
+        working = true;
         try
         {
-            working = true;
             CustomerDB db = new CustomerDB();
             await db.UpdateAsync(user);
-
-            await ses.SetAsync("customer", user);
+            await MySession.SetAsync("customer", user);
             isEditing = false;
+            profileMsg = "Success!";
         }
-        finally
-        {
-            working = false;
-            await InvokeAsync(StateHasChanged);
-        }
+        catch { profileMsg = "Update failed."; }
+        finally { working = false; }
     }
 
     private async Task Logout()
     {
-        await ses.DeleteAsync("customer");
-        await ses.DeleteAsync("prefs");
-        await ses.DeleteAsync("prefsTraits");
+        await MySession.DeleteAsync("customer");
         nav.NavigateTo("/login", true);
     }
 
-    private void GoAdmin()
-    {
-        nav.NavigateTo("/admin", true);
-    }
+    private void GoAdmin() => nav.NavigateTo("/admin", true);
 }
 
 <style>
-    /* Styling exclusively based on tags to meet the rigid separation requirement */
-    div > main {
+    .account-page-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        background-color: #f8faf9;
+        padding: 40px 20px;
+    }
+
+    .account-card {
+        width: 100%;
         max-width: 600px;
-        margin: 40px auto;
         background: white;
         padding: 40px;
         border-radius: 20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        font-family: 'Segoe UI', sans-serif;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     }
 
-    main > header {
+    header {
         text-align: center;
         margin-bottom: 30px;
     }
 
-        main > header > h2 {
-            color: #2e5f3e;
-            margin: 0 0 5px 0;
-        }
+    .brand-logo {
+        color: #2e5f3e;
+        margin-bottom: 5px;
+    }
 
-        main > header > h3 {
-            margin: 0;
-            font-weight: 800;
-            color: #333;
-        }
-
-    main > section {
+    .info-section {
         margin-top: 25px;
         padding: 20px;
-        border: 1px solid #eee;
-        border-radius: 16px;
+        border: 1px solid #f0f0f0;
+        border-radius: 12px;
         background: #fdfdfd;
     }
 
-        main > section > h4 {
-            font-weight: 900;
-            color: #2e5f3e;
-            margin: 0 0 15px 0;
-            font-size: 1.2rem;
-        }
+    h4 {
+        color: #2e5f3e;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+        margin-top: 0;
+    }
 
-        main > section > p {
-            margin: 8px 0;
-            color: #444;
-        }
+    label {
+        display: block;
+        font-weight: bold;
+        font-size: 0.9rem;
+        margin-top: 15px;
+        color: #555;
+    }
 
-        main > section > input,
-        main > section > select {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            box-sizing: border-box;
-            font: inherit;
-            background: white;
-        }
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-sizing: border-box;
+    }
 
-            main > section > select:disabled {
-                background-color: #f1f1f1;
-                color: #888;
-                cursor: not-allowed;
-            }
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
 
-        main > section > div > button,
-        main > section > button {
-            width: 100%;
-            background-color: #2e5f3e;
-            color: white;
-            padding: 12px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            margin-top: 10px;
-            font-weight: bold;
-            transition: opacity 0.2s;
-        }
+    .btn {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        color: white;
+    }
 
-            main > section > div > button:nth-of-type(2) {
-                background-color: #777; /* Logout or Cancel button */
-            }
+    .btn-primary {
+        background-color: #2e5f3e;
+    }
 
-            main > section > div > button:nth-of-type(3) {
-                background-color: #2e7d9f; /* Go to Admin button */
-            }
+    .btn-secondary {
+        background-color: #888;
+    }
 
-            main > section > div > button:disabled,
-            main > section > button:disabled {
-                opacity: 0.6;
-                cursor: not-allowed;
-            }
+    .btn-info {
+        background-color: #2e7d9f;
+    }
 
-        main > section > span {
-            display: block;
-            margin-top: 15px;
-            font-weight: bold;
-            text-align: center;
-            color: #2e5f3e;
-            background-color: #eef5f0;
-            padding: 10px;
-            border-radius: 8px;
-        }
+    .full-width {
+        width: 100%;
+        margin-top: 20px;
+    }
 
-        main > section > fieldset {
-            margin-top: 15px;
-            padding: 15px;
-            border: 1px solid #e9e9e9;
-            border-radius: 14px;
-            background: #fff;
-        }
+    .traits-box {
+        border: 1px solid #eee;
+        border-radius: 8px;
+        margin-top: 20px;
+        padding: 15px;
+    }
 
-            main > section > fieldset > legend {
-                font-weight: bold;
-                color: #2e5f3e;
-                padding: 0 8px;
-            }
+    .traits-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
 
-            main > section > fieldset > div {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-            }
+    .trait-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
 
-                main > section > fieldset > div > label {
-                    display: flex;
-                    gap: 10px;
-                    align-items: center;
-                    padding: 10px;
-                    border-radius: 12px;
-                    background: #fbfbfb;
-                    border: 1px solid #eee;
-                    font-weight: 700;
-                    cursor: pointer;
-                    color: #333;
-                }
+    .error-alert {
+        color: #d93025;
+        margin-top: 15px;
+        font-weight: bold;
+        text-align: center;
+    }
 
-        main > section > a {
-            display: inline-block;
-            margin-right: 10px;
-            margin-top: 10px;
-            padding: 12px 20px;
-            border-radius: 12px;
-            background: #eef5f0;
-            border: 1px solid #dcece1;
-            color: #2e5f3e;
+    .status-alert {
+        color: #2e5f3e;
+        margin-top: 15px;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+        .nav-links a {
             text-decoration: none;
+            color: #2e5f3e;
             font-weight: bold;
-            transition: background 0.2s;
+            background: #eef5f0;
+            padding: 8px 15px;
+            border-radius: 6px;
         }
-
-            main > section > a:hover {
-                background: #e0ece4;
-            }
 </style>
