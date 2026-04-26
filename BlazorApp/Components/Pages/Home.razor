@@ -3,6 +3,7 @@
 @using Models
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @inject IServiceProvider ServiceProvider
+@inject NavigationManager nav
 
 <div class="page">
     <div class="top">
@@ -60,6 +61,10 @@
 
                         <a class="link" href="mailto:@p.UploaderEmail">Email: @p.UploaderEmail</a>
                         <a class="link" href="tel:@p.UploaderPhone">Phone: @p.UploaderPhone</a>
+                    </div>
+
+                    <div class="actionBox">
+                        <button class="btn-details" @onclick="() => GoToDetails(p.PetID)">View Details & Adopt</button>
                     </div>
                 </div>
             </div>
@@ -123,7 +128,6 @@
 
         int userId = custRes.Value.UserID;
 
-        // 1. Fetch main preferences (Type / Race)
         UserPrefs pref = null;
         var prefRes = await ses.GetAsync<UserPrefs>("prefs");
         if (prefRes.Success && prefRes.Value != null)
@@ -138,7 +142,6 @@
                 await ses.SetAsync("prefs", pref);
         }
 
-        // 2. Fetch trait preferences
         List<int> userTraits = new List<int>();
         var traitRes = await ses.GetAsync<List<int>>("prefsTraits");
         if (traitRes.Success && traitRes.Value != null)
@@ -154,17 +157,14 @@
             await ses.SetAsync("prefsTraits", userTraits);
         }
 
-        // If no preferences at all, just return
         if (pref == null && userTraits.Count == 0) return;
 
-        // Apply filters
         if (pref != null && pref.PrefTypeID != 0)
             _typeID = pref.PrefTypeID;
 
         if (pref != null && pref.PrefRaceID != 0)
             selectedRaceID = pref.PrefRaceID;
 
-        // Build the text
         List<string> chips = new();
 
         if (pref != null && pref.PrefTypeID != 0)
@@ -180,7 +180,6 @@
         }
         else if (userTraits.Count > 0)
         {
-            // If user has no specific type preference but did select traits
             chips.Add("All Types");
         }
 
@@ -271,6 +270,13 @@
     }
 
     string GetImg(string pic) => string.IsNullOrEmpty(pic) ? "/PetPics/noimg.png" : "/PetPics/" + pic;
+
+    // הפונקציה המעודכנת: שומרת את ה-ID בסשן במקום לדחוף אותו לכתובת האתר!
+    private async Task GoToDetails(int petId)
+    {
+        await ses.SetAsync("selectedPetId", petId);
+        nav.NavigateTo("/petdetails");
+    }
 }
 
 <style>
@@ -350,6 +356,8 @@
         border-radius: 20px;
         overflow: hidden;
         box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
     }
 
     .pic {
@@ -360,6 +368,9 @@
 
     .info {
         padding: 16px;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
     }
 
     .name {
@@ -391,6 +402,7 @@
         margin-top: 12px;
         padding-top: 12px;
         border-top: 1px solid #eee;
+        flex-grow: 1;
     }
 
     .contactTitle {
@@ -404,6 +416,26 @@
         color: #2e5f3e;
         text-decoration: none;
     }
+
+    .actionBox {
+        margin-top: 15px;
+    }
+
+    .btn-details {
+        width: 100%;
+        height: 40px;
+        background: #2e5f3e;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background 0.2s;
+    }
+
+        .btn-details:hover {
+            background: #244a30;
+        }
 
     @@media (max-width: 1000px) {
         .grid {

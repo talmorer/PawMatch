@@ -171,5 +171,31 @@ WHERE p.IsActive = 1
 
             return await UpdateAsync(f, w);
         }
+        public async Task<Pet> GetByIdAsync(int petId)
+        {
+            string sql = @"
+SELECT 
+    p.PetID, p.PetName, p.PetAdress, p.PetPicture, p.PetType, p.PetBirthYear, p.UpdateUserID, p.IsActive, p.PetRaceID,
+    t.Description AS TypeName,
+    r.Description AS RaceName,
+    u.FirstName, u.LastName, u.Email, u.Phone
+FROM pets p
+INNER JOIN pet_type t ON t.TypeID = p.PetType
+INNER JOIN pet_race r ON r.PetRaceID = p.PetRaceID
+INNER JOIN users u ON u.UserID = p.UpdateUserID
+WHERE p.PetID = @id";
+
+            Dictionary<string, object> prms = new Dictionary<string, object>();
+            prms.Add("id", petId);
+
+            var lst = (List<Pet>)await SelectAllAsync(sql, prms);
+
+            if (lst != null && lst.Count > 0)
+            {
+                return lst[0];
+            }
+
+            return null;
+        }
     }
 }

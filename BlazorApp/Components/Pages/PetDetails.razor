@@ -1,0 +1,353 @@
+﻿@page "/petdetails"
+@using DBL
+@using Models
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedSessionStorage MySession
+@inject NavigationManager nav
+
+<div class="details-page-wrapper">
+    @if (!loaded)
+    {
+        <div class="loading-state">Loading pet information...</div>
+    }
+    else if (pet == null)
+    {
+        <div class="error-container">
+            <h3>Pet not found</h3>
+            <button class="btn btn-secondary" @onclick="GoBack">Back to Search</button>
+        </div>
+    }
+    else
+    {
+        <main class="details-card">
+            <div class="image-container">
+                <img class="pet-image" src="@GetImg(pet.PetPicture)" />
+            </div>
+
+            <div class="card-content">
+                <header class="details-header">
+                    <h2 class="pet-name">@pet.PetName</h2>
+                    <div class="pet-type-info">
+                        <span>@pet.TypeName</span> • <span>@pet.RaceName</span>
+                    </div>
+                </header>
+
+                <div class="pet-quick-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Birth Year</span>
+                        <span class="stat-value">@pet.PetBirthYear</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <span class="stat-label">Location</span>
+                        <span class="stat-value">@pet.PetAdress</span>
+                    </div>
+                </div>
+
+                <section class="adoption-actions">
+                    <button type="button" class="btn-action-green" @onclick="HandleAdoptionRequest" disabled="@working">
+                        Submit Adoption Request
+                    </button>
+
+                    <button type="button" class="btn-action-green" @onclick="HandleVisitRequest" disabled="@working">
+                        Schedule a Visit
+                    </button>
+
+                    <button type="button" class="btn-action-green" @onclick="HandleDeliveryRequest" disabled="@working">
+                        Request Delivery
+                    </button>
+                </section>
+
+                @if (statusMessage != "")
+                {
+                    <div class="status-box">@statusMessage</div>
+                }
+
+                <section class="owner-contact">
+                    <h4>Owner Information</h4>
+                    <p class="owner-name"><b>Name:</b> @pet.UploaderFirstName @pet.UploaderLastName</p>
+                    <div class="contact-links">
+                        <a href="mailto:@pet.UploaderEmail" class="contact-btn email-btn">Send Email</a>
+                        <a href="tel:@pet.UploaderPhone" class="contact-btn phone-btn">Call Owner</a>
+                    </div>
+                </section>
+
+                <button class="btn-back-link" @onclick="GoBack">← Back to Search</button>
+            </div>
+        </main>
+    }
+</div>
+
+@code {
+    private int PetID = 0;
+    private Pet pet = null;
+    private Customer currentUser = null;
+
+    private bool loaded = false;
+    private bool working = false;
+    private string statusMessage = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var userRes = await MySession.GetAsync<Customer>("customer");
+        if (userRes.Success && userRes.Value != null)
+        {
+            currentUser = userRes.Value;
+        }
+
+        var petIdRes = await MySession.GetAsync<int>("selectedPetId");
+        if (petIdRes.Success && petIdRes.Value > 0)
+        {
+            PetID = petIdRes.Value;
+            PetsDB db = new PetsDB();
+            pet = await db.GetByIdAsync(PetID);
+        }
+
+        loaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleAdoptionRequest()
+    {
+        if (currentUser == null)
+        {
+            statusMessage = "Please login first to adopt a pet.";
+            return;
+        }
+
+        working = true;
+        statusMessage = "Sending request...";
+
+        try
+        {
+            AdoptionRequest req = new AdoptionRequest();
+            req.PetID = PetID;
+            req.AdopterID = currentUser.UserID;
+            req.Status = "Pending";
+
+            AdoptionRequestDB db = new AdoptionRequestDB();
+            await db.InsertAsync(req);
+
+            statusMessage = "Your adoption request was sent to the owner!";
+        }
+        catch (Exception)
+        {
+            statusMessage = "Error sending request. Please try again.";
+        }
+        finally
+        {
+            working = false;
+        }
+    }
+
+    private void HandleVisitRequest()
+    {
+        statusMessage = "Visit request recorded. The owner will contact you.";
+    }
+
+    private void HandleDeliveryRequest()
+    {
+        statusMessage = "Delivery service selected. Coordinate with owner after approval.";
+    }
+
+    private void GoBack()
+    {
+        nav.NavigateTo("/");
+    }
+
+    private string GetImg(string pic) => string.IsNullOrEmpty(pic) ? "/PetPics/noimg.png" : "/PetPics/" + pic;
+}
+
+<style>
+    .details-page-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        background-color: #f8faf9;
+        padding: 50px 20px;
+    }
+
+    .details-card {
+        width: 100%;
+        max-width: 450px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        overflow: hidden;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .image-container {
+        width: 100%;
+        height: 280px;
+        background-color: #eee;
+    }
+
+    .pet-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .card-content {
+        padding: 35px 30px;
+        text-align: center;
+    }
+
+    .details-header {
+        margin-bottom: 25px;
+    }
+
+    .pet-name {
+        font-size: 2.4rem;
+        color: #2e5f3e;
+        margin: 0 0 5px 0;
+        font-weight: 800;
+    }
+
+    .pet-type-info {
+        color: #666;
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+
+    .pet-quick-stats {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #fdfdfd;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        border: 1px solid #f0f0f0;
+    }
+
+    .stat-item {
+        padding: 0 20px;
+    }
+
+    .stat-divider {
+        width: 1px;
+        height: 30px;
+        background-color: #e0e0e0;
+    }
+
+    .stat-label {
+        display: block;
+        font-size: 0.75rem;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+    }
+
+    .stat-value {
+        font-weight: 800;
+        color: #333;
+        font-size: 1.1rem;
+    }
+
+    .adoption-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 30px;
+    }
+
+    .btn-action-green {
+        background-color: #2e5f3e;
+        color: white;
+        border: none;
+        padding: 14px;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.2s;
+        width: 100%;
+    }
+
+        .btn-action-green:hover {
+            background-color: #244a30;
+        }
+
+        .btn-action-green:disabled {
+            background-color: #aebdb3;
+            cursor: not-allowed;
+        }
+
+    .status-box {
+        background-color: #eef5f0;
+        color: #2e5f3e;
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        font-weight: bold;
+    }
+
+    .owner-contact {
+        background: #f9fdfa;
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid #eef5f0;
+        margin-bottom: 25px;
+    }
+
+        .owner-contact h4 {
+            margin: 0 0 10px 0;
+            color: #444;
+            font-size: 1.1rem;
+        }
+
+    .owner-name {
+        margin: 0 0 15px 0;
+        color: #555;
+    }
+
+    .contact-links {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .contact-btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 0.9rem;
+        color: #2e5f3e;
+        background-color: white;
+        border: 1px solid #2e5f3e;
+        transition: all 0.2s;
+    }
+
+        .contact-btn:hover {
+            background-color: #2e5f3e;
+            color: white;
+        }
+
+    .btn-back-link {
+        background: none;
+        border: none;
+        color: #888;
+        cursor: pointer;
+        font-size: 0.95rem;
+        text-decoration: none;
+        font-weight: bold;
+        transition: color 0.2s;
+    }
+
+        .btn-back-link:hover {
+            color: #333;
+        }
+
+    .loading-state, .error-container {
+        text-align: center;
+        margin-top: 100px;
+        font-family: sans-serif;
+    }
+</style>

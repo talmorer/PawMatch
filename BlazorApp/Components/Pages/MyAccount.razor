@@ -118,6 +118,7 @@
                 <h4>Quick Links</h4>
                 <div class="nav-links">
                     <a href="/mypets">My Pets</a>
+                    <a href="/managerequests">Manage Requests</a>
                     <a href="/">Home</a>
                 </div>
             </section>
@@ -226,6 +227,9 @@
             await utdb.DeleteByUserAsync(user.UserID);
             foreach (int tid in selTraits) { await utdb.InsertAsync(user.UserID, tid); }
 
+            await MySession.SetAsync("prefs", p);
+            await MySession.SetAsync("prefsTraits", selTraits);
+
             prefsMsg = "Preferences Saved!";
         }
         catch { prefsMsg = "Error saving."; }
@@ -275,6 +279,8 @@
     private async Task Logout()
     {
         await MySession.DeleteAsync("customer");
+        await MySession.DeleteAsync("prefs");
+        await MySession.DeleteAsync("prefsTraits");
         nav.NavigateTo("/login", true);
     }
 
@@ -298,6 +304,7 @@
         padding: 40px;
         border-radius: 20px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
     header {
@@ -308,6 +315,8 @@
     .brand-logo {
         color: #2e5f3e;
         margin-bottom: 5px;
+        margin-top: 0;
+        font-size: 1.8rem;
     }
 
     .info-section {
@@ -414,6 +423,7 @@
         display: flex;
         gap: 10px;
         margin-top: 15px;
+        flex-wrap: wrap;
     }
 
         .nav-links a {
@@ -421,7 +431,12 @@
             color: #2e5f3e;
             font-weight: bold;
             background: #eef5f0;
-            padding: 8px 15px;
-            border-radius: 6px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            transition: background 0.2s;
         }
+
+            .nav-links a:hover {
+                background: #dcece1;
+            }
 </style>
