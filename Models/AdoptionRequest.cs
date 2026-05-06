@@ -4,13 +4,23 @@ namespace Models
 {
     public class AdoptionRequest
     {
-        public int RequestID { get; set; }
         public int PetID { get; set; }
-        public int AdopterID { get; set; }
-        public string Status { get; set; }
-        public DateTime RequestDate { get; set; }
+        public int UserRequstingID { get; set; }
+        public string RequestDate { get; set; }
+        public int IsAdopted { get; set; }
+
         public string PetName { get; set; }
         public string AdopterFirstName { get; set; }
         public string AdopterPhone { get; set; }
+
+        public string StatusText
+        {
+            get
+            {
+                if (IsAdopted == 1) return "Approved";
+                if (IsAdopted == 2) return "Rejected";
+                return "Pending";
+            }
+        }
     }
 }

@@ -36,12 +36,12 @@
                                 <h4>Pet: @req.PetName</h4>
                                 <p><b>Interested Adopter:</b> @req.AdopterFirstName</p>
                                 <p><b>Phone:</b> @req.AdopterPhone</p>
-                                <p><b>Status:</b> <span class="status-tag">@req.Status</span></p>
+                                <p><b>Status:</b> <span class="status-tag">@req.StatusText</span></p>
                             </div>
 
                             <div class="request-actions">
-                                <button class="btn btn-approve" @onclick='() => ProcessRequest(req.RequestID, req.PetID, "Approved")' disabled="@working">Approve</button>
-                                <button class="btn btn-reject" @onclick='() => ProcessRequest(req.RequestID, req.PetID, "Rejected")' disabled="@working">Reject</button>
+                                <button class="btn btn-approve" @onclick="() => ProcessRequest(req.PetID, req.UserRequstingID, 1)" disabled="@working">Approve</button>
+                                <button class="btn btn-reject" @onclick="() => ProcessRequest(req.PetID, req.UserRequstingID, 2)" disabled="@working">Reject</button>
                             </div>
                         </div>
                     }
@@ -88,7 +88,7 @@
         requestsList = await db.GetRequestsForOwnerAsync(user.UserID);
     }
 
-    private async Task ProcessRequest(int requestId, int petId, string newStatus)
+    private async Task ProcessRequest(int petId, int requestingUserId, int newStatus)
     {
         working = true;
         message = "Processing...";
@@ -96,9 +96,9 @@
         try
         {
             AdoptionRequestDB db = new AdoptionRequestDB();
-            await db.UpdateStatusAsync(requestId, newStatus);
+            await db.UpdateStatusAsync(petId, requestingUserId, newStatus);
 
-            if (newStatus == "Approved")
+            if (newStatus == 1)
             {
                 PetsDB petDb = new PetsDB();
                 await petDb.SetActiveAsync(petId, 0);

@@ -10,11 +10,29 @@
     {
         <div class="loading-state">Loading pet information...</div>
     }
+    else if (!string.IsNullOrEmpty(dbError))
+    {
+        <div class="error-container">
+            <h3>System Error</h3>
+            <p style="color: #d93025; font-weight: bold;">@dbError</p>
+            <button class="btn btn-secondary" @onclick="GoBack">Back to Search</button>
+        </div>
+    }
     else if (pet == null)
     {
         <div class="error-container">
             <h3>Pet not found</h3>
             <button class="btn btn-secondary" @onclick="GoBack">Back to Search</button>
+        </div>
+    }
+    else if (currentUser == null)
+    {
+        <div class="error-container" style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.08);">
+            <h3 style="color: #2e5f3e; margin-top: 0;">Login Required 🐾</h3>
+            <p style="color: #555; font-size: 1.1rem; margin-bottom: 20px;">You need to be logged in to view pet details and contact the owner.</p>
+            <button class="btn-action-green" @onclick="GoToLogin" style="margin-bottom: 10px;">Go to Login</button>
+            <br />
+            <button class="btn-back-link" @onclick="GoBack">← Back to Search</button>
         </div>
     }
     else
@@ -44,19 +62,37 @@
                     </div>
                 </div>
 
-                <section class="adoption-actions">
-                    <button type="button" class="btn-action-green" @onclick="HandleAdoptionRequest" disabled="@working">
-                        Submit Adoption Request
-                    </button>
+                @if (currentUser.UserID == pet.UpdateUserID)
+                {
+                    <div class="status-box owner-box">
+                        🐾 This is your pet!
+                    </div>
+                }
+                else
+                {
+                    <section class="adoption-actions">
+                        @if (existingRequest != null)
+                        {
+                            <button type="button" class="btn-action-status" disabled>
+                                Request Status: @existingRequest.StatusText
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn-action-green" @onclick="HandleAdoptionRequest" disabled="@working">
+                                Submit Adoption Request
+                            </button>
+                        }
 
-                    <button type="button" class="btn-action-green" @onclick="HandleVisitRequest" disabled="@working">
-                        Schedule a Visit
-                    </button>
+                        <button type="button" class="btn-action-green" @onclick="HandleVisitRequest" disabled="@working">
+                            Schedule a Visit
+                        </button>
 
-                    <button type="button" class="btn-action-green" @onclick="HandleDeliveryRequest" disabled="@working">
-                        Request Delivery
-                    </button>
-                </section>
+                        <button type="button" class="btn-action-green" @onclick="HandleDeliveryRequest" disabled="@working">
+                            Request Delivery
+                        </button>
+                    </section>
+                }
 
                 @if (statusMessage != "")
                 {
@@ -82,40 +118,53 @@
     private int PetID = 0;
     private Pet pet = null;
     private Customer currentUser = null;
+    private AdoptionRequest existingRequest = null;
 
     private bool loaded = false;
     private bool working = false;
     private string statusMessage = "";
+    private string dbError = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
-        var userRes = await MySession.GetAsync<Customer>("customer");
-        if (userRes.Success && userRes.Value != null)
+        try
         {
-            currentUser = userRes.Value;
-        }
+            var userRes = await MySession.GetAsync<Customer>("customer");
+            if (userRes.Success && userRes.Value != null)
+            {
+                currentUser = userRes.Value;
+            }
 
-        var petIdRes = await MySession.GetAsync<int>("selectedPetId");
-        if (petIdRes.Success && petIdRes.Value > 0)
+            var petIdRes = await MySession.GetAsync<int>("selectedPetId");
+            if (petIdRes.Success && petIdRes.Value > 0)
+            {
+                PetID = petIdRes.Value;
+                PetsDB db = new PetsDB();
+                pet = await db.GetByIdAsync(PetID);
+
+                if (currentUser != null && pet != null && currentUser.UserID != pet.UpdateUserID)
+                {
+                    AdoptionRequestDB adb = new AdoptionRequestDB();
+                    existingRequest = await adb.GetRequestByUserAndPetAsync(currentUser.UserID, PetID);
+                }
+            }
+        }
+        catch (Exception ex)
         {
-            PetID = petIdRes.Value;
-            PetsDB db = new PetsDB();
-            pet = await db.GetByIdAsync(PetID);
+            dbError = "Database Error: " + ex.Message;
         }
-
-        loaded = true;
-        await InvokeAsync(StateHasChanged);
+        finally
+        {
+            loaded = true;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task HandleAdoptionRequest()
     {
-        if (currentUser == null)
-        {
-            statusMessage = "Please login first to adopt a pet.";
-            return;
-        }
+        if (currentUser == null) return;
 
         working = true;
         statusMessage = "Sending request...";
@@ -124,11 +173,14 @@
         {
             AdoptionRequest req = new AdoptionRequest();
             req.PetID = PetID;
-            req.AdopterID = currentUser.UserID;
-            req.Status = "Pending";
+            req.UserRequstingID = currentUser.UserID;
+            req.IsAdopted = 0;
+            req.RequestDate = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
 
             AdoptionRequestDB db = new AdoptionRequestDB();
             await db.InsertAsync(req);
+
+            existingRequest = await db.GetRequestByUserAndPetAsync(currentUser.UserID, PetID);
 
             statusMessage = "Your adoption request was sent to the owner!";
         }
@@ -139,6 +191,7 @@
         finally
         {
             working = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -155,6 +208,11 @@
     private void GoBack()
     {
         nav.NavigateTo("/");
+    }
+
+    private void GoToLogin()
+    {
+        nav.NavigateTo("/login");
     }
 
     private string GetImg(string pic) => string.IsNullOrEmpty(pic) ? "/PetPics/noimg.png" : "/PetPics/" + pic;
@@ -279,6 +337,18 @@
             cursor: not-allowed;
         }
 
+    .btn-action-status {
+        background-color: #e0e0e0;
+        color: #555;
+        border: 2px dashed #999;
+        padding: 14px;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: bold;
+        width: 100%;
+        cursor: default;
+    }
+
     .status-box {
         background-color: #eef5f0;
         color: #2e5f3e;
@@ -286,6 +356,12 @@
         border-radius: 10px;
         margin-bottom: 25px;
         font-weight: bold;
+    }
+
+    .owner-box {
+        background-color: #f0f4f8;
+        color: #2e7d9f;
+        border: 1px solid #d0e3ec;
     }
 
     .owner-contact {
@@ -350,4 +426,4 @@
         margin-top: 100px;
         font-family: sans-serif;
     }
-</style>
+</style> מ         

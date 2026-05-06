@@ -2,6 +2,7 @@
 @using DBL
 @using Models
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using System.Linq
 @inject IServiceProvider ServiceProvider
 @inject NavigationManager nav
 
@@ -82,7 +83,9 @@
     List<Trait> allTraits = new();
     List<PetTrait> allPetTraits = new();
     Dictionary<int, string> petTraitsText = new();
+
     string prefText = "";
+    List<int> userTraitsFilter = new List<int>();
 
     int _typeID = 0;
     int SelectedTypeID
@@ -122,6 +125,8 @@
     async Task ApplyPrefs()
     {
         prefText = "";
+        userTraitsFilter = new List<int>();
+
         var custRes = await ses.GetAsync<Customer>("customer");
         if (!custRes.Success || custRes.Value == null)
             return;
@@ -142,22 +147,21 @@
                 await ses.SetAsync("prefs", pref);
         }
 
-        List<int> userTraits = new List<int>();
         var traitRes = await ses.GetAsync<List<int>>("prefsTraits");
         if (traitRes.Success && traitRes.Value != null)
         {
-            userTraits = traitRes.Value;
+            userTraitsFilter = traitRes.Value;
         }
         else
         {
             UserPrefsTraitsDB utdb = new UserPrefsTraitsDB();
             var lst = await utdb.GetByUserAsync(userId);
             foreach (var x in lst)
-                userTraits.Add(x.TraitID);
-            await ses.SetAsync("prefsTraits", userTraits);
+                userTraitsFilter.Add(x.TraitID);
+            await ses.SetAsync("prefsTraits", userTraitsFilter);
         }
 
-        if (pref == null && userTraits.Count == 0) return;
+        if (pref == null && userTraitsFilter.Count == 0) return;
 
         if (pref != null && pref.PrefTypeID != 0)
             _typeID = pref.PrefTypeID;
@@ -178,7 +182,7 @@
                 }
             }
         }
-        else if (userTraits.Count > 0)
+        else if (userTraitsFilter.Count > 0)
         {
             chips.Add("All Types");
         }
@@ -186,10 +190,10 @@
         if (pref != null && pref.PrefRaceID != 0)
             chips.Add("Race selected");
 
-        if (userTraits.Count > 0)
+        if (userTraitsFilter.Count > 0)
         {
             List<string> tNames = new();
-            foreach (int tid in userTraits)
+            foreach (int tid in userTraitsFilter)
             {
                 var trObj = allTraits.FirstOrDefault(x => x.TraitID == tid);
                 if (trObj != null) tNames.Add(trObj.TraitName);
@@ -239,10 +243,30 @@
     async Task Search()
     {
         PetsDB db = new PetsDB();
-        pets = await db.SearchAsync(_typeID, selectedRaceID, txt);
+        var rawPets = await db.SearchAsync(_typeID, selectedRaceID, txt);
 
         PetsTraitsDB ptrdb = new PetsTraitsDB();
         allPetTraits = await ptrdb.GetAllAsync();
+
+        if (userTraitsFilter != null && userTraitsFilter.Count > 0)
+        {
+            pets = rawPets.OrderByDescending(p =>
+            {
+                int matchCount = 0;
+                foreach (var pt in allPetTraits)
+                {
+                    if (pt.PetID == p.PetID && userTraitsFilter.Contains(pt.TraitID))
+                    {
+                        matchCount++;
+                    }
+                }
+                return matchCount;
+            }).ToList();
+        }
+        else
+        {
+            pets = rawPets;
+        }
 
         BuildTraitsText();
         await InvokeAsync(StateHasChanged);
@@ -271,7 +295,6 @@
 
     string GetImg(string pic) => string.IsNullOrEmpty(pic) ? "/PetPics/noimg.png" : "/PetPics/" + pic;
 
-    // הפונקציה המעודכנת: שומרת את ה-ID בסשן במקום לדחוף אותו לכתובת האתר!
     private async Task GoToDetails(int petId)
     {
         await ses.SetAsync("selectedPetId", petId);
@@ -449,7 +472,7 @@
 
     @@media (max-width: 650px) {
         .grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr;   
         }
 
         .filters {

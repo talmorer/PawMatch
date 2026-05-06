@@ -9,34 +9,36 @@ namespace DBL
 {
     public class AdoptionRequestDB
     {
-        private string connString = "server=localhost;database=pawmatch;uid=root;pwd=;";
+        private string connString = "server=localhost;database=project;uid=root;pwd=;";
 
         public async Task InsertAsync(AdoptionRequest req)
         {
             using (MySqlConnection conn = new MySqlConnection(connString))
             {
                 await conn.OpenAsync();
-                string sql = "INSERT INTO adoption_request (PetID, AdopterID, Status, RequestDate) VALUES (@p, @a, @s, NOW())";
+                string sql = "INSERT INTO adoption_request (PetID, UserRequstingID, RequestDate, IsAdopted) VALUES (@p, @u, @d, @i)";
                 using (MySqlCommand cmd = new MySqlCommand(sql, conn))
                 {
                     cmd.Parameters.AddWithValue("@p", req.PetID);
-                    cmd.Parameters.AddWithValue("@a", req.AdopterID);
-                    cmd.Parameters.AddWithValue("@s", "Pending");
+                    cmd.Parameters.AddWithValue("@u", req.UserRequstingID);
+                    cmd.Parameters.AddWithValue("@d", req.RequestDate);
+                    cmd.Parameters.AddWithValue("@i", req.IsAdopted);
                     await cmd.ExecuteNonQueryAsync();
                 }
             }
         }
 
-        public async Task UpdateStatusAsync(int requestId, string status)
+        public async Task UpdateStatusAsync(int petId, int requestingUserId, int isAdoptedStatus)
         {
             using (MySqlConnection conn = new MySqlConnection(connString))
             {
                 await conn.OpenAsync();
-                string sql = "UPDATE adoption_request SET Status = @s WHERE RequestID = @id";
+                string sql = "UPDATE adoption_request SET IsAdopted = @status WHERE PetID = @p AND UserRequstingID = @u";
                 using (MySqlCommand cmd = new MySqlCommand(sql, conn))
                 {
-                    cmd.Parameters.AddWithValue("@s", status);
-                    cmd.Parameters.AddWithValue("@id", requestId);
+                    cmd.Parameters.AddWithValue("@status", isAdoptedStatus);
+                    cmd.Parameters.AddWithValue("@p", petId);
+                    cmd.Parameters.AddWithValue("@u", requestingUserId);
                     await cmd.ExecuteNonQueryAsync();
                 }
             }
@@ -49,12 +51,12 @@ namespace DBL
             {
                 await conn.OpenAsync();
                 string sql = @"
-                SELECT a.RequestID, a.PetID, a.AdopterID, a.Status, a.RequestDate,
+                SELECT a.PetID, a.UserRequstingID, a.RequestDate, a.IsAdopted,
                        p.PetName, u.FirstName, u.Phone
                 FROM adoption_request a
                 INNER JOIN pets p ON a.PetID = p.PetID
-                INNER JOIN users u ON a.AdopterID = u.UserID
-                WHERE p.UpdateUserID = @ownerId AND a.Status = 'Pending'";
+                INNER JOIN users u ON a.UserRequstingID = u.UserID
+                WHERE p.UpdateUserID = @ownerId AND a.IsAdopted = 0";
 
                 using (MySqlCommand cmd = new MySqlCommand(sql, conn))
                 {
@@ -64,11 +66,10 @@ namespace DBL
                         while (await reader.ReadAsync())
                         {
                             AdoptionRequest r = new AdoptionRequest();
-                            r.RequestID = reader.GetInt32("RequestID");
                             r.PetID = reader.GetInt32("PetID");
-                            r.AdopterID = reader.GetInt32("AdopterID");
-                            r.Status = reader.GetString("Status");
-                            r.RequestDate = reader.GetDateTime("RequestDate");
+                            r.UserRequstingID = reader.GetInt32("UserRequstingID");
+                            r.RequestDate = reader.GetString("RequestDate");
+                            r.IsAdopted = reader.GetInt32("IsAdopted");
                             r.PetName = reader.GetString("PetName");
                             r.AdopterFirstName = reader.GetString("FirstName");
                             r.AdopterPhone = reader.GetString("Phone");
@@ -78,6 +79,33 @@ namespace DBL
                 }
             }
             return list;
+        }
+
+        public async Task<AdoptionRequest> GetRequestByUserAndPetAsync(int userId, int petId)
+        {
+            using (MySqlConnection conn = new MySqlConnection(connString))
+            {
+                await conn.OpenAsync();
+                string sql = "SELECT * FROM adoption_request WHERE UserRequstingID = @u AND PetID = @p LIMIT 1";
+                using (MySqlCommand cmd = new MySqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@u", userId);
+                    cmd.Parameters.AddWithValue("@p", petId);
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            AdoptionRequest r = new AdoptionRequest();
+                            r.PetID = reader.GetInt32("PetID");
+                            r.UserRequstingID = reader.GetInt32("UserRequstingID");
+                            r.RequestDate = reader.GetString("RequestDate");
+                            r.IsAdopted = reader.GetInt32("IsAdopted");
+                            return r;
+                        }
+                    }
+                }
+            }
+            return null;
         }
     }
 }
