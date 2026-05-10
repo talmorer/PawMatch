@@ -83,14 +83,6 @@
                                 Submit Adoption Request
                             </button>
                         }
-
-                        <button type="button" class="btn-action-green" @onclick="HandleVisitRequest" disabled="@working">
-                            Schedule a Visit
-                        </button>
-
-                        <button type="button" class="btn-action-green" @onclick="HandleDeliveryRequest" disabled="@working">
-                            Request Delivery
-                        </button>
                     </section>
                 }
 
@@ -193,16 +185,6 @@
             working = false;
             await InvokeAsync(StateHasChanged);
         }
-    }
-
-    private void HandleVisitRequest()
-    {
-        statusMessage = "Visit request recorded. The owner will contact you.";
-    }
-
-    private void HandleDeliveryRequest()
-    {
-        statusMessage = "Delivery service selected. Coordinate with owner after approval.";
     }
 
     private void GoBack()
@@ -426,4 +408,4 @@
         margin-top: 100px;
         font-family: sans-serif;
     }
-</style> מ         
+</style>

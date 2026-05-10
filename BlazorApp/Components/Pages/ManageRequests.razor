@@ -40,7 +40,7 @@
                             </div>
 
                             <div class="request-actions">
-                                <button class="btn btn-approve" @onclick="() => ProcessRequest(req.PetID, req.UserRequstingID, 1)" disabled="@working">Approve</button>
+                                <button class="btn btn-approve" @onclick="() => ProcessRequest(req.PetID, req.UserRequstingID, 1)" disabled="@working">Approve & Send to Delivery</button>
                                 <button class="btn btn-reject" @onclick="() => ProcessRequest(req.PetID, req.UserRequstingID, 2)" disabled="@working">Reject</button>
                             </div>
                         </div>
@@ -102,7 +102,10 @@
             {
                 PetsDB petDb = new PetsDB();
                 await petDb.SetActiveAsync(petId, 0);
-                message = "Adoption approved! Pet is no longer available.";
+
+                string deliveryApiUrl = $"http://localhost:5000/delivery?petId={petId}&ownerId={user.UserID}&adopterId={requestingUserId}";
+                nav.NavigateTo(deliveryApiUrl, forceLoad: true);
+                return;
             }
             else
             {
@@ -203,6 +206,7 @@
 
     .request-actions {
         display: flex;
+        flex-direction: column;
         gap: 10px;
     }
 
