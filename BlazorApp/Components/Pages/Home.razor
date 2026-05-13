@@ -101,6 +101,10 @@
     int selectedRaceID = 0;
     string txt = "";
 
+    // משתנים לשמירת ההעדפות כדי למיין אותן למעלה
+    int basePrefType = 0;
+    int basePrefRace = 0;
+
     protected override async Task OnInitializedAsync()
     {
         ses = (ProtectedSessionStorage)ServiceProvider.GetService(typeof(ProtectedSessionStorage));
@@ -161,13 +165,14 @@
             await ses.SetAsync("prefsTraits", userTraitsFilter);
         }
 
+        // שומרים את ההעדפות בנפרד כדי למיין לפיהן את התצוגה
+        if (pref != null)
+        {
+            basePrefType = pref.PrefTypeID;
+            basePrefRace = pref.PrefRaceID;
+        }
+
         if (pref == null && userTraitsFilter.Count == 0) return;
-
-        if (pref != null && pref.PrefTypeID != 0)
-            _typeID = pref.PrefTypeID;
-
-        if (pref != null && pref.PrefRaceID != 0)
-            selectedRaceID = pref.PrefRaceID;
 
         List<string> chips = new();
 
@@ -245,9 +250,13 @@
         PetsDB db = new PetsDB();
         var rawPets = await db.SearchAsync(_typeID, selectedRaceID, txt);
 
+        // סינון: חיות שנשלחו לא יופיעו בכלל
+        rawPets = rawPets.Where(p => p.IsActive == 1).ToList();
+
         PetsTraitsDB ptrdb = new PetsTraitsDB();
         allPetTraits = await ptrdb.GetAllAsync();
 
+        // מיון: עדיפות למועדפים שלך לפסגה
         if (userTraitsFilter != null && userTraitsFilter.Count > 0)
         {
             pets = rawPets.OrderByDescending(p =>
@@ -261,11 +270,17 @@
                     }
                 }
                 return matchCount;
-            }).ToList();
+            })
+            .ThenByDescending(p => p.PetType == basePrefType && basePrefType != 0)
+            .ThenByDescending(p => p.PetRaceID == basePrefRace && basePrefRace != 0)
+            .ToList();
         }
         else
         {
-            pets = rawPets;
+            pets = rawPets
+                .OrderByDescending(p => p.PetType == basePrefType && basePrefType != 0)
+                .ThenByDescending(p => p.PetRaceID == basePrefRace && basePrefRace != 0)
+                .ToList();
         }
 
         BuildTraitsText();
@@ -472,7 +487,7 @@
 
     @@media (max-width: 650px) {
         .grid {
-            grid-template-columns: 1fr;   
+            grid-template-columns: 1fr;
         }
 
         .filters {

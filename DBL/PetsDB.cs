@@ -1,7 +1,8 @@
-﻿using System;
+﻿using Models;
+using MySql.Data.MySqlClient;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Models;
 
 namespace DBL
 {
@@ -171,6 +172,7 @@ WHERE p.IsActive = 1
 
             return await UpdateAsync(f, w);
         }
+
         public async Task<Pet> GetByIdAsync(int petId)
         {
             string sql = @"

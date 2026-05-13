@@ -1,0 +1,247 @@
+﻿@page "/track"
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Models
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedSessionStorage MySession
+@inject HttpClient Http
+@inject NavigationManager nav
+
+<div class="track-page-wrapper">
+    @if (!loaded)
+    {
+        <div class="loading-state">Loading your deliveries...</div>
+    }
+    else
+    {
+        <main class="track-card">
+            <header class="track-header">
+                <h2 class="title">🚚 My Deliveries</h2>
+                <p class="subtitle">Track the pets you've ordered</p>
+                <p style="font-size: 0.85rem; color: #888;">Searching for user: @currentUser?.Email</p>
+            </header>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div style="color: red; padding: 10px; border: 1px solid red; border-radius: 5px; margin-bottom: 20px;">
+                    @errorMessage
+                </div>
+            }
+
+            @if (myDeliveries == null || myDeliveries.Count == 0)
+            {
+                <div class="empty-state">
+                    <p>You don't have any active deliveries.</p>
+                    <button class="btn-primary" @onclick="GoHome">Find a Pet</button>
+                </div>
+            }
+            else
+            {
+                <div class="deliveries-list">
+                    @foreach (var del in myDeliveries)
+                    {
+                        <div class="delivery-item">
+                            <div class="del-info">
+                                <h4>@del.PetDescription</h4>
+                                <p>Tracking ID: <b>DLY-@del.DeliveryID</b></p>
+                            </div>
+                            <div class="del-status">
+                                <span class="status-badge @GetStatusClass(del.Status)">@del.Status</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <button class="btn-back-link" @onclick="GoHome" style="margin-top: 25px;">← Back to Search</button>
+            }
+        </main>
+    }
+</div>
+
+@code {
+    private bool loaded = false;
+    private Customer currentUser = null;
+    private List<MyDelivery> myDeliveries = new List<MyDelivery>();
+    private string errorMessage = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var userRes = await MySession.GetAsync<Customer>("customer");
+        if (userRes.Success && userRes.Value != null)
+        {
+            currentUser = userRes.Value;
+            await LoadMyDeliveries();
+        }
+        else
+        {
+            nav.NavigateTo("/login");
+            return;
+        }
+
+        loaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadMyDeliveries()
+    {
+        try
+        {
+            string apiUrl = $"https://localhost:7020/api/Deliveries/ByUser?email={currentUser.Email}";
+            var result = await Http.GetFromJsonAsync<List<MyDelivery>>(apiUrl);
+            if (result != null)
+            {
+                myDeliveries = result;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "API Error: Make sure the API is running (" + ex.Message + ")";
+        }
+    }
+
+    private string GetStatusClass(string status)
+    {
+        if (string.IsNullOrEmpty(status)) return "status-pending";
+        var s = status.ToLower();
+        if (s.Contains("pending")) return "status-pending";
+        if (s.Contains("transit")) return "status-transit";
+        if (s.Contains("delivered")) return "status-delivered";
+        return "status-pending";
+    }
+
+    private void GoHome() => nav.NavigateTo("/");
+
+    public class MyDelivery
+    {
+        public int DeliveryID { get; set; }
+        public string PetDescription { get; set; }
+        public string Status { get; set; }
+    }
+}
+
+<style>
+    .track-page-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        background-color: #f8faf9;
+        padding: 40px 20px;
+    }
+
+    .track-card {
+        width: 100%;
+        max-width: 550px;
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        text-align: center;
+    }
+
+    .title {
+        color: #2e5f3e;
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 800;
+    }
+
+    .subtitle {
+        color: #777;
+        margin-top: 5px;
+        font-size: 1rem;
+        margin-bottom: 15px;
+    }
+
+    .deliveries-list {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        text-align: left;
+    }
+
+    .delivery-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        border: 1px solid #eee;
+        border-radius: 12px;
+        background-color: #fdfdfd;
+        transition: box-shadow 0.2s;
+    }
+
+        .delivery-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+    .del-info h4 {
+        margin: 0 0 5px 0;
+        color: #333;
+        font-size: 1.1rem;
+    }
+
+    .del-info p {
+        margin: 0;
+        color: #777;
+        font-size: 0.9rem;
+    }
+
+    .status-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        display: inline-block;
+    }
+
+    .status-pending {
+        background-color: #fef0cd;
+        color: #b07e00;
+    }
+
+    .status-transit {
+        background-color: #e0f2fe;
+        color: #026aa7;
+    }
+
+    .status-delivered {
+        background-color: #eef5f0;
+        color: #2e5f3e;
+    }
+
+    .empty-state {
+        padding: 40px;
+        color: #666;
+    }
+
+    .btn-primary {
+        background-color: #2e5f3e;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 15px;
+    }
+
+    .btn-back-link {
+        background: none;
+        border: none;
+        color: #888;
+        cursor: pointer;
+        font-weight: bold;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .loading-state {
+        margin-top: 100px;
+        font-family: sans-serif;
+        color: #555;
+    }
+</style>

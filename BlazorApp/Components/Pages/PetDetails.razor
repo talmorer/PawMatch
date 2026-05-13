@@ -2,8 +2,13 @@
 @using DBL
 @using Models
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using System.Net.Http
+@using System.Net.Http.Json
+@using System.Text.Json
+@using System.Text
 @inject ProtectedSessionStorage MySession
 @inject NavigationManager nav
+@inject HttpClient Http
 
 <div class="details-page-wrapper">
     @if (!loaded)
@@ -29,7 +34,7 @@
     {
         <div class="error-container" style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.08);">
             <h3 style="color: #2e5f3e; margin-top: 0;">Login Required 🐾</h3>
-            <p style="color: #555; font-size: 1.1rem; margin-bottom: 20px;">You need to be logged in to view pet details and contact the owner.</p>
+            <p style="color: #555; font-size: 1.1rem; margin-bottom: 20px;">You need to be logged in to order a delivery for this pet.</p>
             <button class="btn-action-green" @onclick="GoToLogin" style="margin-bottom: 10px;">Go to Login</button>
             <br />
             <button class="btn-back-link" @onclick="GoBack">← Back to Search</button>
@@ -71,32 +76,49 @@
                 else
                 {
                     <section class="adoption-actions">
-                        @if (existingRequest != null)
+                        @if (!showDeliveryForm)
                         {
-                            <button type="button" class="btn-action-status" disabled>
-                                Request Status: @existingRequest.StatusText
+                            <button type="button" class="btn-action-blue" @onclick="ToggleDeliveryForm" disabled="@working">
+                                🚚 Order Delivery Now
                             </button>
                         }
-                        else
+
+                        @if (showDeliveryForm)
                         {
-                            <button type="button" class="btn-action-green" @onclick="HandleAdoptionRequest" disabled="@working">
-                                Submit Adoption Request
-                            </button>
+                            <div class="delivery-form-box">
+                                <h4>Order Delivery</h4>
+                                <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">
+                                    Pickup: <b>@pet.PetAdress</b><br />
+                                    Owner: <b>@pet.UploaderFirstName @pet.UploaderLastName</b>
+                                </p>
+
+                                <label>Your Delivery Address:</label>
+                                <input type="text" @bind="deliveryAddress" placeholder="Enter destination address" class="form-control" />
+
+                                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                    <button type="button" class="btn-action-green" @onclick="SubmitDeliveryRequest" disabled="@working">
+                                        Confirm Order
+                                    </button>
+                                    <button type="button" class="btn-action-cancel" @onclick="ToggleDeliveryForm" disabled="@working">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
                         }
                     </section>
                 }
 
                 @if (statusMessage != "")
                 {
-                    <div class="status-box">@statusMessage</div>
+                    <div class="status-box @(isErrorMsg ? "error-box" : "")">@statusMessage</div>
                 }
 
                 <section class="owner-contact">
                     <h4>Owner Information</h4>
-                    <p class="owner-name"><b>Name:</b> @pet.UploaderFirstName @pet.UploaderLastName</p>
+                    <p class="owner-name">@pet.UploaderFirstName @pet.UploaderLastName</p>
                     <div class="contact-links">
-                        <a href="mailto:@pet.UploaderEmail" class="contact-btn email-btn">Send Email</a>
-                        <a href="tel:@pet.UploaderPhone" class="contact-btn phone-btn">Call Owner</a>
+                        <a href="mailto:@pet.UploaderEmail" class="contact-btn">Email</a>
+                        <a href="tel:@pet.UploaderPhone" class="contact-btn">Call</a>
                     </div>
                 </section>
 
@@ -110,12 +132,15 @@
     private int PetID = 0;
     private Pet pet = null;
     private Customer currentUser = null;
-    private AdoptionRequest existingRequest = null;
 
     private bool loaded = false;
     private bool working = false;
     private string statusMessage = "";
+    private bool isErrorMsg = false;
     private string dbError = "";
+
+    private bool showDeliveryForm = false;
+    private string deliveryAddress = "";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -135,12 +160,6 @@
                 PetID = petIdRes.Value;
                 PetsDB db = new PetsDB();
                 pet = await db.GetByIdAsync(PetID);
-
-                if (currentUser != null && pet != null && currentUser.UserID != pet.UpdateUserID)
-                {
-                    AdoptionRequestDB adb = new AdoptionRequestDB();
-                    existingRequest = await adb.GetRequestByUserAndPetAsync(currentUser.UserID, PetID);
-                }
             }
         }
         catch (Exception ex)
@@ -154,31 +173,73 @@
         }
     }
 
-    private async Task HandleAdoptionRequest()
+    private void ToggleDeliveryForm()
     {
-        if (currentUser == null) return;
+        showDeliveryForm = !showDeliveryForm;
+        statusMessage = "";
+    }
+
+    private async Task SubmitDeliveryRequest()
+    {
+        if (string.IsNullOrWhiteSpace(deliveryAddress))
+        {
+            isErrorMsg = true;
+            statusMessage = "Destination address is required.";
+            return;
+        }
 
         working = true;
-        statusMessage = "Sending request...";
+        isErrorMsg = false;
+        statusMessage = "Processing your order...";
+        StateHasChanged();
 
         try
         {
-            AdoptionRequest req = new AdoptionRequest();
-            req.PetID = PetID;
-            req.UserRequstingID = currentUser.UserID;
-            req.IsAdopted = 0;
-            req.RequestDate = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+            var deliveryData = new
+            {
+                SenderName = $"{pet.UploaderFirstName} {pet.UploaderLastName}",
+                SenderPhone = pet.UploaderPhone,
+                SenderEmail = pet.UploaderEmail,
+                PickupAddress = pet.PetAdress,
+                ReceiverName = $"{currentUser.FirstName} {currentUser.LastName}",
+                ReceiverPhone = currentUser.Phone,
+                ReceiverEmail = currentUser.Email,
+                DeliveryAddress = deliveryAddress,
+                PetDescription = $"{pet.PetName} ({pet.TypeName})",
+                Status = "Pending"
+            };
 
-            AdoptionRequestDB db = new AdoptionRequestDB();
-            await db.InsertAsync(req);
+            string apiUrl = "https://localhost:7020/api/Deliveries/Create";
 
-            existingRequest = await db.GetRequestByUserAndPetAsync(currentUser.UserID, PetID);
+            var jsonContent = new StringContent(JsonSerializer.Serialize(deliveryData), Encoding.UTF8, "application/json");
+            var response = await Http.PostAsync(apiUrl, jsonContent);
 
-            statusMessage = "Your adoption request was sent to the owner!";
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                using (JsonDocument doc = JsonDocument.Parse(responseContent))
+                {
+                    int trackingId = doc.RootElement.GetProperty("deliveryID").GetInt32();
+
+                    PetsDB pdb = new PetsDB();
+                    await pdb.SetActiveAsync(PetID, 0);
+
+                    isErrorMsg = false;
+                    statusMessage = $"Success! Your tracking number is: DLY-{trackingId}";
+                    showDeliveryForm = false;
+                }
+            }
+            else
+            {
+                isErrorMsg = true;
+                string errorDetail = await response.Content.ReadAsStringAsync();
+                statusMessage = "Order failed: " + errorDetail;
+            }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            statusMessage = "Error sending request. Please try again.";
+            isErrorMsg = true;
+            statusMessage = "Connection error: " + ex.Message;
         }
         finally
         {
@@ -251,7 +312,6 @@
     .pet-type-info {
         color: #666;
         font-size: 1.1rem;
-        font-weight: 500;
     }
 
     .pet-quick-stats {
@@ -280,7 +340,6 @@
         font-size: 0.75rem;
         color: #888;
         text-transform: uppercase;
-        letter-spacing: 1px;
         margin-bottom: 4px;
     }
 
@@ -297,115 +356,114 @@
         margin-bottom: 30px;
     }
 
+    .btn-action-blue {
+        background-color: #2e7d9f;
+        color: white;
+        border: none;
+        padding: 16px;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        width: 100%;
+    }
+
     .btn-action-green {
         background-color: #2e5f3e;
         color: white;
         border: none;
-        padding: 14px;
-        border-radius: 10px;
-        font-size: 1rem;
+        padding: 12px;
+        border-radius: 8px;
         font-weight: bold;
         cursor: pointer;
-        transition: background 0.2s;
-        width: 100%;
+        flex: 2;
     }
 
-        .btn-action-green:hover {
-            background-color: #244a30;
-        }
-
-        .btn-action-green:disabled {
-            background-color: #aebdb3;
-            cursor: not-allowed;
-        }
-
-    .btn-action-status {
-        background-color: #e0e0e0;
-        color: #555;
-        border: 2px dashed #999;
-        padding: 14px;
-        border-radius: 10px;
-        font-size: 1rem;
+    .btn-action-cancel {
+        background-color: #f0f0f0;
+        color: #666;
+        border: 1px solid #ccc;
+        padding: 12px;
+        border-radius: 8px;
         font-weight: bold;
+        cursor: pointer;
+        flex: 1;
+    }
+
+    .delivery-form-box {
+        background: #f0f4f8;
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid #d0e3ec;
+        text-align: left;
+    }
+
+        .delivery-form-box h4 {
+            margin: 0 0 10px 0;
+            color: #2e7d9f;
+        }
+
+    .form-control {
         width: 100%;
-        cursor: default;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        box-sizing: border-box;
     }
 
     .status-box {
         background-color: #eef5f0;
         color: #2e5f3e;
-        padding: 12px;
+        padding: 15px;
         border-radius: 10px;
         margin-bottom: 25px;
         font-weight: bold;
     }
 
+    .error-box {
+        background-color: #fbeee0;
+        color: #d93025;
+        border: 1px solid #d93025;
+    }
+
     .owner-box {
         background-color: #f0f4f8;
         color: #2e7d9f;
-        border: 1px solid #d0e3ec;
     }
 
     .owner-contact {
         background: #f9fdfa;
         padding: 20px;
         border-radius: 15px;
-        border: 1px solid #eef5f0;
         margin-bottom: 25px;
-    }
-
-        .owner-contact h4 {
-            margin: 0 0 10px 0;
-            color: #444;
-            font-size: 1.1rem;
-        }
-
-    .owner-name {
-        margin: 0 0 15px 0;
-        color: #555;
     }
 
     .contact-links {
         display: flex;
         justify-content: center;
-        gap: 10px;
+        gap: 15px;
+        margin-top: 10px;
     }
 
     .contact-btn {
-        padding: 8px 16px;
+        padding: 8px 20px;
         border-radius: 8px;
         text-decoration: none;
         font-weight: bold;
-        font-size: 0.9rem;
         color: #2e5f3e;
-        background-color: white;
         border: 1px solid #2e5f3e;
-        transition: all 0.2s;
     }
-
-        .contact-btn:hover {
-            background-color: #2e5f3e;
-            color: white;
-        }
 
     .btn-back-link {
         background: none;
         border: none;
         color: #888;
         cursor: pointer;
-        font-size: 0.95rem;
-        text-decoration: none;
         font-weight: bold;
-        transition: color 0.2s;
     }
-
-        .btn-back-link:hover {
-            color: #333;
-        }
 
     .loading-state, .error-container {
         text-align: center;
         margin-top: 100px;
-        font-family: sans-serif;
     }
 </style>
