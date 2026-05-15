@@ -222,37 +222,31 @@ else
     async Task AddPetToDB()
     {
         if (working) return;
-
         try
         {
             working = true;
             message = "Saving...";
             await InvokeAsync(StateHasChanged);
-
             if (string.IsNullOrWhiteSpace(petName) || string.IsNullOrWhiteSpace(petAddress))
             {
                 message = "Please fill all fields.";
                 return;
             }
-
             if (selectedTypeID == 0 || selectedRaceID == 0)
             {
                 message = "Please select type and race.";
                 return;
             }
-
             if (!int.TryParse(birthYearText, out int birthYear))
             {
                 message = "Birth Year must be a number.";
                 return;
             }
-
             if (string.IsNullOrWhiteSpace(fileName))
             {
                 message = "Please upload a picture.";
                 return;
             }
-
             PetsDB db = new PetsDB();
             Pet p = new Pet
             {
@@ -265,14 +259,12 @@ else
                 UpdateUserID = cu.UserID,
                 IsActive = 1
             };
-
             var ins = await db.InsertGetObjAsync(p);
             if (ins == null)
             {
                 message = "Insert failed.";
                 return;
             }
-
             PetsTraitsDB ptDb = new PetsTraitsDB();
             await ptDb.DeleteByPetAsync(ins.PetID);
 
@@ -280,8 +272,6 @@ else
                 await ptDb.InsertAsync(ins.PetID, tid);
 
             message = "Saved.";
-
-            // Navigate away to prevent double clicking/submission
             nav.NavigateTo("/mypets");
         }
         catch (Exception ex)
