@@ -73,6 +73,9 @@
 
         try
         {
+            // הצפנת הסיסמה לפני השמירה למסד הנתונים
+            customer.Password = Helper.HashPassword(customer.Password);
+
             await db.InsertGetObjAsync(customer);
             await MySession.SetAsync("customer", customer);
             nav.NavigateTo("/myaccount");

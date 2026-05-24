@@ -98,7 +98,9 @@
             return;
         }
 
-        Customer found = await db.SelectByEmailAndPasswordAsync(email, pass);
+        // הצפנת הסיסמה שהוזנה לפני החיפוש ב-DB
+        string hashedPass = Helper.HashPassword(pass);
+        Customer found = await db.SelectByEmailAndPasswordAsync(email, hashedPass);
 
         if (found != null)
         {
@@ -182,7 +184,10 @@
             return;
         }
 
-        int rows = await db.UpdatePasswordByEmailAsync(fpEmail, newPass);
+        // הצפנת הסיסמה החדשה לפני השמירה
+        string hashedNewPass = Helper.HashPassword(newPass);
+
+        int rows = await db.UpdatePasswordByEmailAsync(fpEmail, hashedNewPass);
         if (rows > 0)
         {
             message = "Password updated. You can login now.";
